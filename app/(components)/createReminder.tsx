@@ -63,8 +63,8 @@ const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
   return (
     <ScrollView contentContainerStyle={styles.container}>
       
-         <LinearGradient colors={["#5975D9", "#070557"]} style={styles.header}>
-        <TouchableOpacity onPress={()=>router.back()}>
+         <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
+        <TouchableOpacity onPress={()=>router.back()} >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Create Reminder</Text>
@@ -74,6 +74,21 @@ const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
       </LinearGradient>
 
       <View style={styles.card}>
+
+        <Text style={styles.label}>
+          Select Opportunity <Text style={styles.required}>*</Text>
+        </Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={lead}
+            onValueChange={(itemValue) => setLead(itemValue)}
+          >
+            <Picker.Item label="---Select Opportunity---" value="" />
+            <Picker.Item label="Opportunity A" value="OpportunityA" />
+            <Picker.Item label="Opportunity B" value="OpportunityB" />
+          </Picker>
+        </View>
+
         <Text style={styles.label}>
           Select Lead <Text style={styles.required}>*</Text>
         </Text>
@@ -220,7 +235,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
   button: {
-    backgroundColor: "#0a1e91",
+    backgroundColor: "#1F40B5",
     paddingVertical: 14,
     borderRadius: 8,
     marginTop: 20,

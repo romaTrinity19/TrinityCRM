@@ -282,3 +282,186 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 });
+
+
+
+// import React from "react";
+// import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+// import { LinearGradient } from "expo-linear-gradient";
+// import { Ionicons, FontAwesome5, MaterialCommunityIcons } from "@expo/vector-icons";
+
+// export default function AttendanceDashboard() {
+//   return (
+//     <ScrollView contentContainerStyle={styles.container}>
+//       {/* Date Header */}
+//       <View style={styles.dateCard}>
+//         <View style={styles.dateRow}>
+//           <Text style={styles.dateNumber}>
+//   27
+//   <Text style={styles.sup}>th</Text>
+// </Text>
+
+//           <View style={styles.dateDetails}>
+//             <Text style={styles.dayText}>Wednesday</Text>
+//             <Text style={styles.monthText}>August 2019</Text>
+//           </View>
+//         </View>
+//         <View style={styles.weekStatus}>
+//           {["M", "T", "W", "T", "F"].map((d, i) => (
+//             <View
+//               key={i}
+//               style={[
+//                 styles.dayCircle,
+//                 i === 2 ? styles.activeDay : i === 1 ? styles.leaveDay : {},
+//               ]}
+//             >
+//               <Text style={styles.dayLabel}>{d}</Text>
+//             </View>
+//           ))}
+//         </View>
+//       </View>
+
+//       {/* Circular Stats */}
+//       <View style={styles.statRow}>
+//         <View style={styles.statCircle}>
+//           <Text style={styles.statNumber}>83%</Text>
+//           <Text style={styles.statLabel}>Attendance</Text>
+//         </View>
+//         <View style={styles.statCircle}>
+//           <Text style={styles.statNumber}>03</Text>
+//           <Text style={styles.statLabel}>Leave Taken</Text>
+//         </View>
+//         <View style={styles.statCircle}>
+//           <Text style={styles.statNumber}>23</Text>
+//           <Text style={styles.statLabel}>Ongoing Days</Text>
+//         </View>
+//       </View>
+
+//       {/* Grid Options */}
+//       <View style={styles.grid}>
+//         {[
+//           { label: "Ask Leave", icon: "calendar-minus" },
+//           { label: "Leaderboard", icon: "trophy" },
+//           { label: "News", icon: "newspaper" },
+//           { label: "Predictor", icon: "chart-line" },
+//           { label: "Friends", icon: "account-group" },
+//           { label: "Assignments", icon: "file-document-outline" },
+//         ].map((item, index) => (
+//           <TouchableOpacity key={index} style={styles.gridItem}>
+//             <MaterialCommunityIcons name={item.icon} size={30} color="#5975D9" />
+//             <Text style={styles.gridLabel}>{item.label}</Text>
+//           </TouchableOpacity>
+//         ))}
+//       </View>
+//     </ScrollView>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   container: {
+//     padding: 20,
+//     backgroundColor: "#f3f5fb",
+//   },
+//   dateCard: {
+//     backgroundColor: "#fff",
+//     borderRadius: 16,
+//     padding: 20,
+//     marginBottom: 20,
+//     elevation: 3,
+//   },
+//   sup: {
+//   fontSize: 12,
+//   lineHeight: 24,
+//   textAlignVertical: "top",
+//   color: "#5975D9",
+// },
+
+//   dateRow: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//   },
+//   dateNumber: {
+//     fontSize: 36,
+//     color: "#5975D9",
+//     fontWeight: "bold",
+//   },
+//   dateDetails: {
+//     marginLeft: 10,
+//   },
+//   dayText: {
+//     fontSize: 16,
+//     color: "#333",
+//   },
+//   monthText: {
+//     fontSize: 14,
+//     color: "#888",
+//   },
+//   weekStatus: {
+//     flexDirection: "row",
+//     marginTop: 20,
+//     justifyContent: "space-between",
+//   },
+//   dayCircle: {
+//     width: 32,
+//     height: 32,
+//     borderRadius: 16,
+//     backgroundColor: "#e0e0e0",
+//     justifyContent: "center",
+//     alignItems: "center",
+//   },
+//   activeDay: {
+//     backgroundColor: "#5975D9",
+//   },
+//   leaveDay: {
+//     backgroundColor: "#FFBABA",
+//   },
+//   dayLabel: {
+//     color: "#fff",
+//     fontWeight: "bold",
+//   },
+//   statRow: {
+//     flexDirection: "row",
+//     justifyContent: "space-between",
+//     marginBottom: 20,
+//   },
+//   statCircle: {
+//     width: "30%",
+//     aspectRatio: 1,
+//     backgroundColor: "#fff",
+//     borderRadius: 100,
+//     justifyContent: "center",
+//     alignItems: "center",
+//     elevation: 2,
+//   },
+//   statNumber: {
+//     fontSize: 22,
+//     fontWeight: "bold",
+//     color: "#5975D9",
+//   },
+//   statLabel: {
+//     fontSize: 12,
+//     color: "#888",
+//     marginTop: 4,
+//   },
+//   grid: {
+//     flexDirection: "row",
+//     flexWrap: "wrap",
+//     justifyContent: "space-between",
+//   },
+//   gridItem: {
+//     width: "30%",
+//     backgroundColor: "#fff",
+//     borderRadius: 12,
+//     padding: 12,
+//     marginBottom: 15,
+//     alignItems: "center",
+//     elevation: 2,
+//   },
+//   gridLabel: {
+//     fontSize: 12,
+//     marginTop: 8,
+//     textAlign: "center",
+//     color: "#444",
+//   },
+// });
+

@@ -5,19 +5,22 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, useNavigation } from "expo-router";
 import React, { useState } from "react";
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Platform,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
+
 import { withDrawer } from "./drawer";
- type RootDrawerParamList = {
-    Dashboard: undefined;
-    Qualification: undefined;
-    FollowUpForm: undefined;
-  };
+type RootDrawerParamList = {
+  Dashboard: undefined;
+  Qualification: undefined;
+  FollowUpForm: undefined;
+};
 function FollowUpForm() {
   const [form, setForm] = useState({
     lead: "Kush bhaiya",
@@ -46,11 +49,13 @@ function FollowUpForm() {
       status: "",
     });
   };
-  
+  const [showDate, setShowDate] = useState(false);
+  const [showTime, setShowTime] = useState(false);
+
   const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <LinearGradient colors={["#5975D9", "#070557"]} style={styles.header}>
+    <View style={styles.container}>
+      <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" color="#fff" size={24} />
@@ -63,111 +68,173 @@ function FollowUpForm() {
           </TouchableOpacity>
         </View>
       </LinearGradient>
+      <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
+        <View style={styles.card}>
+          <Text style={styles.label}>
+            Select Lead<Text style={styles.required}>*</Text>
+          </Text>
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: "#ccc",
+              borderRadius: 6,
 
-      <View style={styles.card}>
-        <Text style={styles.label}>
-          Select Lead<Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput style={styles.input} value={form.lead}   />
+              marginTop: 5,
+            }}
+          >
+            <Picker
+              selectedValue={form.lead}
+              onValueChange={(itemValue) => handleChange("product", itemValue)}
+            >
+              <Picker.Item label="--Select--" value="" />
+              <Picker.Item label="Lead A" value="productA" />
+              <Picker.Item label="Lead B" value="productB" />
+              <Picker.Item label="Lead C" value="serviceC" />
+            </Picker>
+          </View>
 
-        <Text style={styles.label}>
-          Follow Up Date<Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput
-          style={styles.input}
-          value={form.followUpDate}
-           
-        />
+          <Text style={styles.label}>
+            Select Opportunity<Text style={styles.required}>*</Text>
+          </Text>
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: "#ccc",
+              borderRadius: 6,
 
-        <Text style={styles.label}>
-          Follow Up Time<Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter time"
-          value={form.followUpTime}
-          onChangeText={(text) => handleChange("followUpTime", text)}
-        />
+              marginTop: 5,
+            }}
+          >
+            <Picker
+              selectedValue={form.lead}
+              onValueChange={(itemValue) => handleChange("product", itemValue)}
+            >
+              <Picker.Item label="--Select--" value="" />
+              <Picker.Item label="Lead A" value="productA" />
+              <Picker.Item label="Lead B" value="productB" />
+              <Picker.Item label="Lead C" value="serviceC" />
+            </Picker>
+          </View>
 
-        <Text style={styles.label}>
-          Type<Text style={styles.required}>*</Text>
-        </Text>
-        <Picker
-          selectedValue={form.type}
-          style={styles.input}
-          onValueChange={(itemValue) => handleChange("type", itemValue)}
-        >
-          <Picker.Item label="---Select Followup Type---" value="" />
-          <Picker.Item label="Call" value="call" />
-          <Picker.Item label="Visit" value="visit" />
-        </Picker>
-
-        <Text style={styles.label}>
-          Description<Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput
-          style={[styles.input, { height: 80 }]}
-          placeholder="Description..."
-          multiline
-          value={form.description}
-          onChangeText={(text) => handleChange("description", text)}
-        />
-
-        <Text style={styles.label}>
-          Next Follow Up Date<Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter date"
-          value={form.nextFollowUpDate}
-          onChangeText={(text) => handleChange("nextFollowUpDate", text)}
-        />
-
-        <Text style={styles.label}>
-          Next Follow Up Time<Text style={styles.required}>*</Text>
-        </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter time"
-          value={form.nextFollowUpTime}
-          onChangeText={(text) => handleChange("nextFollowUpTime", text)}
-        />
-
-        <Text style={styles.label}>Status</Text>
-        <Picker
-          selectedValue={form.status}
-          style={styles.input}
-          onValueChange={(itemValue) => handleChange("status", itemValue)}
-        >
-          <Picker.Item label="---Select---" value="" />
-          <Picker.Item label="Pending" value="pending" />
-          <Picker.Item label="Completed" value="completed" />
-        </Picker>
-
-        <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.saveBtn}>
-            <Text style={styles.btnText}>Save</Text>
+          <Text style={styles.label}>
+            Follow Up Date<Text style={styles.required}>*</Text>
+          </Text>
+          <TouchableOpacity
+            onPress={() => setShowDate(true)}
+            style={styles.input}
+          >
+            <Text>{form.followUpDate || "Select date"}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
-            <Text style={styles.btnText}>Reset</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
 
-      <View style={styles.pastFollowUp}>
-        <Text style={styles.pastLabel}>Past Follow Up</Text>
-        <View style={styles.profileRow}>
-          <View style={styles.profileIcon} />
-          <View>
-            <Text style={styles.profileName}>Kush bhaiya</Text>
-            <Text>14-05-2025</Text>
+          {showDate && (
+            <DateTimePicker
+              value={
+                form.followUpDate ? new Date(form.followUpDate) : new Date()
+              }
+              mode="date"
+              display="default"
+              onChange={(event, selectedDate) => {
+                setShowDate(Platform.OS === "ios");
+                if (selectedDate) {
+                  const day = selectedDate
+                    .getDate()
+                    .toString()
+                    .padStart(2, "0");
+                  const month = (selectedDate.getMonth() + 1)
+                    .toString()
+                    .padStart(2, "0");
+                  const year = selectedDate.getFullYear();
+                  const formattedDate = `${day}/${month}/${year}`;
+                  handleChange("followUpDate", formattedDate);
+                }
+              }}
+            />
+          )}
+
+          <Text style={styles.label}>
+            Follow Up Time<Text style={styles.required}>*</Text>
+          </Text>
+          <TouchableOpacity
+            onPress={() => setShowTime(true)}
+            style={styles.input}
+          >
+            <Text>{form.followUpTime || "Select time"}</Text>
+          </TouchableOpacity>
+
+          {showTime && (
+            <DateTimePicker
+              value={new Date()}
+              mode="time"
+              display="default"
+              onChange={(event, selectedTime) => {
+                setShowTime(Platform.OS === "ios");
+                if (selectedTime) {
+                  const formattedTime = selectedTime.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+                  handleChange("followUpTime", formattedTime);
+                }
+              }}
+            />
+          )}
+
+          <Text style={styles.label}>
+            Note<Text style={styles.required}>*</Text>
+          </Text>
+          <TextInput
+            style={[styles.input, { height: 80 }]}
+            placeholder="Description..."
+            multiline
+            value={form.description}
+            onChangeText={(text) => handleChange("description", text)}
+          />
+
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.saveBtn}>
+              <Text style={styles.btnText}>Save</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
+              <Text style={styles.btnText}>Reset</Text>
+            </TouchableOpacity>
           </View>
         </View>
-        <Text>No Followups Yet!</Text>
-      </View>
-      
-    </ScrollView>
-    
+        <TouchableOpacity
+          onPress={() => router.push("/(components)/followUpUserDetails")}
+          style={styles.followUpCard}
+        >
+          <View style={styles.profileRow}>
+            <Ionicons
+              name="person-circle-outline"
+              size={48}
+              color="#5975D9"
+              style={styles.profileIcon}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.profileName}>Roma Chakradhari</Text>
+
+              <View style={styles.detailRow}>
+                <Ionicons name="calendar-outline" size={16} color="#555" />
+                <Text style={styles.detailText}>14/05/2025</Text>
+
+                <Ionicons
+                  name="time-outline"
+                  size={16}
+                  color="#555"
+                  style={{ marginLeft: 12 }}
+                />
+                <Text style={styles.detailText}>05:00 PM</Text>
+              </View>
+
+              <Text style={styles.noteText}>
+                Discussed service updates. Next follow-up scheduled on
+                20/05/2025.
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
 }
 export default withDrawer(FollowUpForm, "FollowUpForm");
@@ -177,6 +244,47 @@ const styles = StyleSheet.create({
     paddingTop: 30,
     backgroundColor: "#f5f7ff",
   },
+  followUpCard: {
+    backgroundColor: "#f0f3ff",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  profileRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  profileIcon: {
+    marginRight: 12,
+  },
+  profileName: {
+    fontWeight: "700",
+    fontSize: 16,
+    color: "#070557",
+    marginBottom: 4,
+  },
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  detailText: {
+    marginLeft: 4,
+    fontSize: 14,
+    color: "#444",
+  },
+  noteText: {
+    fontSize: 13,
+    color: "#666",
+    marginTop: 4,
+    lineHeight: 18,
+  },
+
   heading: {
     fontSize: 20,
     fontWeight: "bold",
@@ -220,7 +328,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 6,
-    padding: 10,
+    padding: 15,
     marginTop: 5,
   },
   buttonRow: {
@@ -229,7 +337,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   saveBtn: {
-    backgroundColor: "#0d1b61",
+    backgroundColor: "#1F40B5",
     padding: 10,
     borderRadius: 6,
     width: "48%",
@@ -246,27 +354,16 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
   },
+
   pastFollowUp: {
     marginTop: 30,
     padding: 10,
+    marginHorizontal: 10,
   },
   pastLabel: {
     fontWeight: "600",
     marginBottom: 10,
-  },
-  profileRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  profileIcon: {
-    width: 40,
-    height: 40,
-    backgroundColor: "#ccc",
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  profileName: {
-    fontWeight: "600",
+    fontSize: 16,
+    color: "#070557",
   },
 });

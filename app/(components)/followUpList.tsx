@@ -1,4 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
+
+import { FontAwesome5 } from "@expo/vector-icons";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -9,54 +11,68 @@ import {
   Modal,
   Pressable,
   StyleSheet,
+  Text,
   TextInput,
   TouchableOpacity,
   View,
+  Platform,
 } from "react-native";
-import { Button, Card, IconButton, Text } from "react-native-paper";
-import { withDrawer } from "../(components)/drawer";
+import { Card, Button } from "react-native-paper";
+import { withDrawer } from "./drawer";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Platform } from "react-native";
 
-const leads = [
+const remindersData = [
   {
     id: "1",
-    name: "#00418 - Kush Bhaiya",
-    service: "Stock Management App",
-    phone: "9131563996, 9131563996",
-    amount: "₹10,000",
-    date: "14th May 2025",
+    name: "Richa",
+    date: "04-09-2024",
+    time: "06:30 pm",
+    description: "",
   },
   {
     id: "2",
-    name: "#00418 - Ravish Talreja",
-    service: "Social Media and digital",
-    phone: "9981515000, 9981515000",
-    date: "14th May 2025",
+    name: "Vaibhav Singhaniya",
+    date: "20-03-2024",
+    time: "04:00 pm",
+    description: "",
   },
   {
     id: "3",
-    name: "#00418 - Amit Ji Jain Traders",
-    service: "Lable prinintg software",
-    phone: "9827138487, 9827138487",
-    date: "14th May 2025",
+    name: "Pramod Agrawal ji",
+    date: "14-10-2023",
+    time: "07:25 am",
+    description: "",
   },
   {
     id: "4",
-    name: "#00418 - Manoj Borker",
-    service: "Website",
-    phone: "",
-    date: "",
+    name: "Shreyansh",
+    date: "16-10-2023",
+    time: "11:00 am",
+    description: "",
+  },
+
+  {
+    id: "5",
+    name: "Pramod Agrawal ji",
+    date: "14-10-2023",
+    time: "07:25 am",
+    description: "",
+  },
+  {
+    id: "6",
+    name: "Shreyansh",
+    date: "16-10-2023",
+    time: "11:00 am",
+    description: "",
   },
 ];
 type RootDrawerParamList = {
   Dashboard: undefined;
   Qualification: undefined;
-  NewLeads: undefined;
+  Reminder: undefined;
 };
-
-function NewLeadsScreen() {
+function ReminderScreen() {
   const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -81,33 +97,22 @@ function NewLeadsScreen() {
     "Rajasthan",
   ];
 
-  // Filter leads based on search query (case-insensitive)
-  const filteredLeads = leads.filter((lead) =>
-    lead.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredReminders = remindersData.filter((item) =>
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<string | null>(null);
-  const [createCustomerModalVisible, setCreateCustomerModalVisible] =
-    useState(false);
-    
-  const menuItems = [
-    { label: "View", route: "/(pages)/newLeads", emoji: "👁️" },
-    { label: "Transfer", route: "/(pages)/newLeads", emoji: "🔄" },
-    {
-      label: "Create Customer",
-      modal: "createCustomer",
-      emoji: "🧑‍💼",
-    },
-    { label: "Edit", route: "/(pages)/newLeads", emoji: "✏️" },
-    {
-      label: "WhatsApp Chat",
-      route: "/(pages)/message",
-      emoji: "💬",
-    },
-    { label: "Call", route: "CallScreen", emoji: "📞" },
-    { label: "Delete", route: "/(pages)/message", emoji: "🗑️" },
-  ];
 
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  const menuItems = [
+    {
+      label: "Follow Up",
+      route: "/(components)/followUp",
+      icon: "time-outline",
+    },
+    { label: "Edit", route: "/(pages)/newLeads", icon: "create-outline" },
+    { label: "Delete", route: "/(pages)/message", icon: "trash" },
+  ];
   const renderMenu = (item: any) => (
     <Modal
       transparent={true}
@@ -119,24 +124,26 @@ function NewLeadsScreen() {
         style={styles.modalOverlay}
         onPress={() => setMenuVisible(false)}
       >
-        <View style={styles.menuContainer2}>
+        <View style={styles.menuContainer}>
           {menuItems.map((menuItem) => (
             <TouchableOpacity
               key={menuItem.label}
-              style={styles.menuItem2}
-              activeOpacity={0.7}
+              style={styles.menuItem}
               onPress={() => {
                 setMenuVisible(false);
-                if (menuItem.modal === "createCustomer") {
-                  setCreateCustomerModalVisible(true);
-                } else if (menuItem.route) {
+                if (menuItem.route) {
                   router.push(menuItem.route as any);
                 }
               }}
             >
-              <View style={styles.menuItemRow2}>
-                <Text style={styles.menuEmoji}>{menuItem.emoji}</Text>
-                <Text style={styles.menuText}>{menuItem.label}</Text>
+              <View style={styles.menuItemRow}>
+                <Ionicons
+                  name={menuItem.icon as any}
+                  size={18}
+                  color="#333"
+                  style={{ marginRight: 10 }}
+                />
+                <Text>{menuItem.label}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -145,56 +152,16 @@ function NewLeadsScreen() {
     </Modal>
   );
 
-  const CreateCustomer = (item: any) => (
-    <Modal
-      visible={createCustomerModalVisible}
-      transparent
-      animationType="fade"
-      onRequestClose={() => setCreateCustomerModalVisible(false)}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.alertBox}>
-          <Text style={styles.alertIcon}>❗</Text>
-          <Text style={styles.alertTitle}>Are you sure?</Text>
-          <Text style={styles.alertMessage}>
-            You won't be able to revert this!
-          </Text>
-          <View style={styles.alertButtons}>
-            <TouchableOpacity
-              style={[styles.alertButton, { backgroundColor: "#4b3ba9" }]}
-              onPress={() => {
-                setCreateCustomerModalVisible(false);
-                // Action logic here...
-              }}
-            >
-              <Text style={styles.alertButtonText}>Yes!</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.alertButton, { backgroundColor: "#f23547" }]}
-              onPress={() => setCreateCustomerModalVisible(false)}
-            >
-              <Text style={styles.alertButtonText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-
   return (
     <View style={styles.container}>
       <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" color="#fff" size={24} />
-          </TouchableOpacity>
-
-          <Text style={styles.headerTitle}>New Leads</Text>
-
-          <TouchableOpacity onPress={() => navigation.openDrawer()}>
-            <Ionicons name="menu" color="#fff" size={24} />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Follow Up List</Text>
+        <TouchableOpacity onPress={() => navigation.openDrawer()}>
+          <Ionicons name="menu" size={24} color="#fff" />
+        </TouchableOpacity>
       </LinearGradient>
 
       <View
@@ -352,163 +319,154 @@ function NewLeadsScreen() {
           </View>
         </View>
       </Modal>
+      <View style={{ paddingBottom: 200 }}>
+        <FlatList
+          data={filteredReminders}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <Card style={styles.card}>
+              <TouchableOpacity
+                onPress={() => router.push("/(components)/followUpUserDetails")}
+              >
+                <View style={styles.cardHeader}>
+                  <FontAwesome5
+                    name="briefcase-medical"
+                    size={20}
+                    color="#0082CA"
+                  />
+                  <Text style={styles.cardTitle}>{item.name}</Text>
 
-      <FlatList
-        data={filteredLeads}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => (
-          <Card style={styles.card} mode="outlined">
-            <Card.Title
-              title={`${index + 1}. ${item.name}`}
-              right={() => (
-                <TouchableOpacity
-                  onPress={() => {
-                    setSelectedItem(item.id);
-                    setMenuVisible(true);
-                  }}
-                >
-                  <IconButton icon="dots-vertical" />
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedItem(item.id);
+                      setMenuVisible(true);
+                    }}
+                  >
+                    <Ionicons name="ellipsis-vertical" size={20} color="gray" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.cardDetailRow}>
+                  <Text style={styles.cardLabel}>Follow Up Date</Text>
+                  <Text style={styles.cardValue}>{item.date}</Text>
+                </View>
+
+                <View style={styles.cardDetailRow}>
+                  <Text style={styles.cardLabel}>Follow Up Time</Text>
+                  <Text style={styles.cardValue}>{item.time}</Text>
+                </View>
+
+                <TouchableOpacity>
+                  <Text style={styles.descriptionText}>▶ Description</Text>
                 </TouchableOpacity>
-              )}
-              titleStyle={{ color: "#4b3ba9" }}
-            />
-            <View style={styles.horizontalLine} />
-            <Card.Content>
-              <View style={styles.row}>
-                <IconButton
-                  icon="bookmark-outline"
-                  size={18}
-                  iconColor="#4b3ba9"
-                />
-                <Text>{item.service}</Text>
-              </View>
-              {item.phone ? (
-                <View style={styles.row}>
-                  <IconButton
-                    icon="phone-outline"
-                    size={18}
-                    iconColor="#4b3ba9"
-                  />
-                  <Text>{item.phone}</Text>
-                </View>
-              ) : null}
-              {item.amount ? (
-                <View style={styles.row}>
-                  <IconButton
-                    icon="wallet-outline"
-                    size={18}
-                    iconColor="#4b3ba9"
-                  />
-                  <Text>{item.amount}</Text>
-                </View>
-              ) : null}
-              {item.date ? (
-                <View style={styles.row}>
-                  <IconButton icon="calendar" size={18} iconColor="#4b3ba9" />
-                  <Text>{item.date}</Text>
-                </View>
-              ) : null}
-            </Card.Content>
-            {renderMenu(item)}
-          </Card>
-        )}
-      />
-      <CreateCustomer />
-      <Button
-        icon="plus"
-        mode="contained"
+              </TouchableOpacity>
+              {renderMenu(item)}
+            </Card>
+          )}
+        />
+      </View>
+      <TouchableOpacity
         style={styles.createButton}
-        labelStyle={{ fontSize: 16 }}
-        onPress={() => router.push("/(pages)/newLeads")}
+        onPress={() => router.push("/(components)/followUp")}
       >
-        Create New Leads
-      </Button>
+        <Text style={styles.createButtonText}>Follow Up</Text>
+      </TouchableOpacity>
     </View>
   );
 }
-export default withDrawer(NewLeadsScreen, "NewLeads");
+
+export default withDrawer(ReminderScreen, "Reminder");
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#edf1fd",
+    backgroundColor: "#f4f7fe",
     paddingTop: 30,
   },
   header: {
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-  },
-  headerContent: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#004c91",
+    padding: 15,
   },
   headerTitle: {
     color: "#fff",
     fontSize: 20,
-    textAlign: "center",
-    flex: 1,
-    marginHorizontal: 12,
+    fontWeight: "bold",
   },
   searchInput: {
+    margin: 10,
+    padding: 10,
     backgroundColor: "#fff",
     borderRadius: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
     fontSize: 16,
-    marginVertical: 15,
-    marginHorizontal: 10,
-  },
-  horizontalLine: {
-    height: 1,
-    backgroundColor: "#4b3ba9",
-    marginHorizontal: 16,
-    marginTop: -15,
-    marginBottom: 4,
-    opacity: 0.5,
   },
   card: {
-    marginBottom: 20,
-    borderRadius: 30,
     backgroundColor: "#fff",
-    borderColor: "#4b3ba9",
     marginHorizontal: 10,
+    marginVertical: 5,
+    borderRadius: 10,
+    padding: 10,
   },
-  row: {
+  cardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: -10,
+    justifyContent: "space-between",
   },
-  createButton: {
-    backgroundColor: "#001a72",
-    borderRadius: 25,
-    marginBottom: 40,
-    paddingVertical: 2,
-    alignSelf: "center",
-    width: "90%",
-    marginTop: 20,
-  },
-  pickerWrapper: {
-    backgroundColor: "#f0f0ff",
-    borderWidth: 0.5,
-    borderColor: "#4B65E9",
-    borderRadius: 8,
-    marginVertical: 8,
-    padding: -10,
-  },
-
-  modalCloseIcon: {
-    position: "absolute",
-    right: 10,
-    top: 10,
-    zIndex: 1,
-  },
-
   menuItemRow: {
     flexDirection: "row",
     alignItems: "center",
   },
 
+  cardTitle: {
+    fontSize: 16,
+    color: "#0082CA",
+    flex: 1,
+    marginLeft: 10,
+  },
+  cardDetailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 5,
+  },
+  cardLabel: {
+    color: "#0082CA",
+    fontWeight: "600",
+  },
+  cardValue: {
+    color: "#000",
+  },
+  urgentBadge: {
+    backgroundColor: "#ff3b30",
+    color: "#fff",
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 10,
+    fontSize: 12,
+  },
+  descriptionText: {
+    color: "#0082CA",
+    marginTop: 5,
+  },
+  createButton: {
+    backgroundColor: "#112980",
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 20,
+    marginHorizontal: 10,
+    position: "absolute",
+    bottom: 40,
+    left: 0,
+    right: 0,
+  },
+  createButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.3)",
@@ -527,6 +485,7 @@ const styles = StyleSheet.create({
   menuItem: {
     paddingVertical: 5,
   },
+
   filterIcon: {
     marginLeft: 8,
     backgroundColor: "#fff",
@@ -633,40 +592,18 @@ const styles = StyleSheet.create({
 
     marginTop: 4,
   },
-
-  menuContainer2: {
-    backgroundColor: "#fff",
-    padding: 24,
-    borderRadius: 20,
-    elevation: 10,
-    width: 320,
-    maxHeight: 450,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
+  modalCloseIcon: {
+    position: "absolute",
+    right: 10,
+    top: 10,
+    zIndex: 1,
   },
-
-  menuItem2: {
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderBottomWidth: 0.5,
-    borderColor: "#ddd",
-  },
-
-  menuItemRow2: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  menuEmoji: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-
-  menuText: {
-    fontSize: 16,
-    color: "#333",
-    fontWeight: "500",
+  pickerWrapper: {
+    backgroundColor: "#f0f0ff",
+    borderWidth: 0.5,
+    borderColor: "#4B65E9",
+    borderRadius: 8,
+    marginVertical: 8,
+    padding: -10,
   },
 });

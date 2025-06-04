@@ -16,8 +16,6 @@ import {
 import { Button, Card, IconButton, Text } from "react-native-paper";
 import { withDrawer } from "../(components)/drawer";
 import { Picker } from "@react-native-picker/picker";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { Platform } from "react-native";
 
 const leads = [
   {
@@ -59,27 +57,20 @@ type RootDrawerParamList = {
 function NewLeadsScreen() {
   const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
   const [searchQuery, setSearchQuery] = useState("");
-
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+
+  const [createCustomerModalVisible, setCreateCustomerModalVisible] =
+    useState(false);
+
   const [filterData, setFilterData] = useState({
     agent: "",
     user: "",
     state: "",
   });
 
-  const [fromDate, setFromDate] = useState(new Date());
-  const [toDate, setToDate] = useState(new Date());
-  const [showFromPicker, setShowFromPicker] = useState(false);
-  const [showToPicker, setShowToPicker] = useState(false);
-
-  const agents = ["--- select ---", "Agent A", "Agent B", "Agent C"];
-  const users = ["--- select ---", "User X", "User Y", "User Z"];
-  const states = [
-    "--- select ---",
-    "Madhya Pradesh",
-    "Maharashtra",
-    "Rajasthan",
-  ];
+  const agents = ["Agent", "Agent A", "Agent B", "Agent C"];
+  const users = ["User", "User X", "User Y", "User Z"];
+  const states = ["State", "Madhya Pradesh", "Maharashtra", "Rajasthan"];
 
   // Filter leads based on search query (case-insensitive)
   const filteredLeads = leads.filter((lead) =>
@@ -87,11 +78,26 @@ function NewLeadsScreen() {
   );
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
-  const [createCustomerModalVisible, setCreateCustomerModalVisible] =
-    useState(false);
-    
-  const menuItems = [
-    { label: "View", route: "/(pages)/newLeads", emoji: "👁️" },
+//   const menuItems = [
+//     { label: "View", route: "/(components)/opportunityUserDetails", icon: "eye-outline" },
+//     { label: "Transfer", route: "/(pages)/newLeads", icon: "swap-horizontal" },
+//     {
+//       label: "Create Customer",
+//       modal: "createCustomer",
+//       icon: "person-add-outline",
+//     },
+//     { label: "Edit", route: "/(pages)/newLeads", icon: "create-outline" },
+//     {
+//       label: "WhatsApp Chat",
+//       route: "/(pages)/message",
+//       icon: "logo-whatsapp",
+//     },
+//     { label: "Call", route: "CallScreen", icon: "call-outline" },
+//     { label: "Delete", route: "/(pages)/message", icon: "trash" },
+//   ];
+
+ const menuItems = [
+    { label: "View", route: "/(components)/opportunityUserDetails", emoji: "👁️" },
     { label: "Transfer", route: "/(pages)/newLeads", emoji: "🔄" },
     {
       label: "Create Customer",
@@ -189,7 +195,7 @@ function NewLeadsScreen() {
             <Ionicons name="arrow-back" color="#fff" size={24} />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>New Leads</Text>
+          <Text style={styles.headerTitle}>Opportunity</Text>
 
           <TouchableOpacity onPress={() => navigation.openDrawer()}>
             <Ionicons name="menu" color="#fff" size={24} />
@@ -237,7 +243,6 @@ function NewLeadsScreen() {
             <Text style={styles.modalTitle}>Apply Filters</Text>
 
             {/* Agent Picker */}
-            <Text style={styles.dateLabel}>Agent</Text>
             <View style={styles.pickerWrapper}>
               <Picker
                 selectedValue={filterData.agent}
@@ -253,7 +258,6 @@ function NewLeadsScreen() {
             </View>
 
             {/* User Picker */}
-            <Text style={styles.dateLabel}>User</Text>
             <View style={styles.pickerWrapper}>
               <Picker
                 selectedValue={filterData.user}
@@ -269,7 +273,6 @@ function NewLeadsScreen() {
             </View>
 
             {/* State Picker */}
-            <Text style={styles.dateLabel}>State</Text>
             <View style={styles.pickerWrapper}>
               <Picker
                 selectedValue={filterData.state}
@@ -283,49 +286,6 @@ function NewLeadsScreen() {
                 ))}
               </Picker>
             </View>
-            {/* From Date Picker */}
-            <Text style={styles.dateLabel}>From Date</Text>
-            <TouchableOpacity
-              onPress={() => setShowFromPicker(true)}
-              style={styles.dateField}
-            >
-              <Text style={styles.dateValue}>
-                {fromDate.toLocaleDateString()}
-              </Text>
-            </TouchableOpacity>
-            <Text style={styles.dateLabel}>To Date</Text>
-            {/* To Date Picker */}
-            <TouchableOpacity
-              onPress={() => setShowToPicker(true)}
-              style={styles.dateField}
-            >
-              <Text style={styles.dateValue}>
-                {toDate.toLocaleDateString()}
-              </Text>
-            </TouchableOpacity>
-            {showFromPicker && (
-              <DateTimePicker
-                value={fromDate}
-                mode="date"
-                display="default"
-                onChange={(event, selectedDate) => {
-                  setShowFromPicker(Platform.OS === "ios");
-                  if (selectedDate) setFromDate(selectedDate);
-                }}
-              />
-            )}
-
-            {showToPicker && (
-              <DateTimePicker
-                value={toDate}
-                mode="date"
-                display="default"
-                onChange={(event, selectedDate) => {
-                  setShowToPicker(Platform.OS === "ios");
-                  if (selectedDate) setToDate(selectedDate);
-                }}
-              />
-            )}
 
             {/* Buttons */}
             <View style={styles.filterButtonsRow}>
@@ -419,9 +379,9 @@ function NewLeadsScreen() {
         mode="contained"
         style={styles.createButton}
         labelStyle={{ fontSize: 16 }}
-        onPress={() => router.push("/(pages)/newLeads")}
+        onPress={() => router.push("/(components)/newOpportunity")}
       >
-        Create New Leads
+        Create Opportunity
       </Button>
     </View>
   );
@@ -429,6 +389,84 @@ function NewLeadsScreen() {
 export default withDrawer(NewLeadsScreen, "NewLeads");
 
 const styles = StyleSheet.create({
+  pickerWrapper: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    marginVertical: 8,
+    padding: -10,
+  },
+
+  modalCloseIcon: {
+    position: "absolute",
+    right: 10,
+    top: 10,
+    zIndex: 1,
+  },
+
+  menuItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  menuContainer: {
+    backgroundColor: "#fff",
+    padding: 20, // increased padding
+    borderRadius: 16,
+    elevation: 8,
+    width: 280, // increased width
+    maxHeight: 400, // optional: in case items overflow
+  },
+
+  menuItem: {
+    paddingVertical: 5,
+  },
+  filterIcon: {
+    marginLeft: 8,
+    backgroundColor: "#fff",
+    padding: 10,
+    borderRadius: 10,
+    elevation: 2,
+  },
+
+  filterContainer: {
+    backgroundColor: "#fff",
+    padding: 20,
+    margin: 20,
+    borderRadius: 10,
+    width: "90%",
+    elevation: 10,
+  },
+
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  filterButtonsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+
+  searchBtn: {
+    flex: 1,
+    marginRight: 10,
+    backgroundColor: "#4b3ba9",
+  },
+
+  resetBtn: {
+    flex: 1,
+    borderColor: "#4b3ba9",
+  },
   container: {
     flex: 1,
     backgroundColor: "#edf1fd",
@@ -488,94 +526,6 @@ const styles = StyleSheet.create({
     width: "90%",
     marginTop: 20,
   },
-  pickerWrapper: {
-    backgroundColor: "#f0f0ff",
-    borderWidth: 0.5,
-    borderColor: "#4B65E9",
-    borderRadius: 8,
-    marginVertical: 8,
-    padding: -10,
-  },
-
-  modalCloseIcon: {
-    position: "absolute",
-    right: 10,
-    top: 10,
-    zIndex: 1,
-  },
-
-  menuItemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.3)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  menuContainer: {
-    backgroundColor: "#fff",
-    padding: 20, // increased padding
-    borderRadius: 16,
-    elevation: 8,
-    width: 280, // increased width
-    maxHeight: 400, // optional: in case items overflow
-  },
-
-  menuItem: {
-    paddingVertical: 5,
-  },
-  filterIcon: {
-    marginLeft: 8,
-    backgroundColor: "#fff",
-    padding: 10,
-    borderRadius: 10,
-    elevation: 2,
-  },
-
-  filterContainer: {
-    backgroundColor: "#fff",
-    padding: 20,
-    margin: 20,
-    borderRadius: 10,
-    width: "90%",
-    elevation: 10,
-  },
-
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-
-  filterInput: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 12,
-  },
-
-  filterButtonsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 10,
-  },
-
-  searchBtn: {
-    flex: 1,
-    marginRight: 10,
-    backgroundColor: "#4b3ba9",
-  },
-
-  resetBtn: {
-    flex: 1,
-    borderColor: "#4b3ba9",
-  },
   alertBox: {
     backgroundColor: "#fff",
     borderRadius: 12,
@@ -615,25 +565,6 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
   },
-  dateField: {
-    backgroundColor: "#f0f0ff",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    borderWidth: 0.5,
-    borderColor: "#4B65E9",
-  },
-  dateLabel: {
-    fontSize: 14,
-    color: "#444",
-    fontWeight: "600",
-  },
-  dateValue: {
-    fontSize: 16,
-
-    marginTop: 4,
-  },
-
   menuContainer2: {
     backgroundColor: "#fff",
     padding: 24,

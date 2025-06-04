@@ -59,7 +59,7 @@ const AddPaymentScreen = () => {
 
   return (
     <ScrollView style={styles.container}>
-      <LinearGradient colors={["#5975D9", "#070557"]} style={styles.header}>
+      <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" color="#fff" size={24} />

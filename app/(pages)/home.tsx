@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import CustomerInteractionStats from "../(components)/dashboardCard";
 
 const Drawer = createDrawerNavigator();
 
@@ -131,7 +132,7 @@ const DrawerContent = (props: any) => {
 const Dashboard = ({ navigation }: any) => {
   return (
     <View style={{ flex: 1, backgroundColor: "#f3f5fb" }}>
-      <LinearGradient colors={["#5975D9", "#070557"]} style={styles.header}>
+      <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
         <TouchableOpacity onPress={() => navigation.openDrawer()}>
           <Icon name="menu" size={28} color="#fff" />
         </TouchableOpacity>
@@ -145,27 +146,27 @@ const Dashboard = ({ navigation }: any) => {
         contentContainerStyle={styles.dashboardContent}
         showsVerticalScrollIndicator={false}
       >
+        <CustomerInteractionStats />
         {[
-          // {
-          //   label: "Today Call Log",
-          //   count: 18,
-          //   icon: "phone-incoming",
-          //   color: "#4b3ba9",
-          //   route: "/(components)/callLog",
-          // },
-          // {
-          //   label: "Today Relevent Call",
-          //   count: 18,
-          //   icon: "phone-incoming",
-          //   color: "#4b3ba9",
-          //   route: "/(components)/notReleventCall",
-          // },
           {
             label: "New Leads",
             count: 19,
             icon: "view-grid",
             color: "#3d40b1",
             route: "/(components)/newLeads",
+          },
+          {
+            label: "Opportunity",
+            count: 19,
+            icon: "trophy-outline",
+            color: "#3d40b1",
+            route: "/(components)/opportunity",
+          },
+          {
+            label: "Follow Up",
+            count: 19,
+            icon: "file-find-outline",
+            route: "/(components)/followUpList",
           },
           {
             label: "Reminder",
@@ -227,22 +228,17 @@ const Dashboard = ({ navigation }: any) => {
           <TouchableOpacity
             key={index}
             onPress={() => router.push(item.route)}
-            style={[styles.cardContainer]}
+            style={styles.cardContainer}
           >
-            <LinearGradient
-              colors={[item.color + "cc", item.color + "88"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.card}
-            >
-              <Icon name={item.icon} size={32} color="#fff" />
-              <Text style={[styles.cardCount, { color: "#fff" }]}>
+            <View style={styles.card}>
+              <Icon name={item.icon} size={30} color="#5975D9" />
+              <Text style={[styles.cardCount, { color: "#5975D9" }]}>
                 {item.count}
               </Text>
-              <Text style={[styles.cardLabel, { color: "#fff" }]}>
+              <Text style={[styles.cardLabel, { color: "#5975D9" }]}>
                 {item.label}
               </Text>
-            </LinearGradient>
+            </View>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -298,10 +294,11 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   dashboardContent: {
-    padding: 10,
+    padding: 5,
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-around",
+    paddingBottom: 200,
   },
   cardWrapper: {
     flexDirection: "row",
@@ -311,11 +308,15 @@ const styles = StyleSheet.create({
   },
 
   cardContainer: {
-    width: "48%",
-    marginBottom: 15,
+    width: "45%",
+    marginBottom: 5,
     borderRadius: 12,
     overflow: "hidden",
-       marginTop: 15,
+    marginTop: 15,
+    backgroundColor: "#fff",
+    borderWidth: 0.5,
+    borderColor: "#5975D9",
+    elevation: 2,
   },
 
   card: {
@@ -324,7 +325,7 @@ const styles = StyleSheet.create({
     padding: 10,
     alignItems: "center",
     justifyContent: "center",
-     marginHorizontal:5
+    marginHorizontal: 5,
   },
 
   cardCount: {

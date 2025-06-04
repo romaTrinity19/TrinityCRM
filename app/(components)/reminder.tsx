@@ -9,6 +9,7 @@ import React, { useState } from "react";
 import {
     FlatList,
     Modal,
+    Platform,
     Pressable,
     StyleSheet,
     Text,
@@ -16,8 +17,10 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { Card } from "react-native-paper";
+import { Button, Card } from "react-native-paper";
 import { withDrawer } from "./drawer";
+import { Picker } from "@react-native-picker/picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 const remindersData = [
   {
@@ -77,10 +80,31 @@ type RootDrawerParamList = {
 };
 function ReminderScreen() {
       const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
-  const [searchText, setSearchText] =useState("");
+   const [searchQuery, setSearchQuery] = useState("");
+  
+    const [filterModalVisible, setFilterModalVisible] = useState(false);
+    const [filterData, setFilterData] = useState({
+      agent: "",
+      user: "",
+      state: "",
+    });
+  
+    const [fromDate, setFromDate] = useState(new Date());
+    const [toDate, setToDate] = useState(new Date());
+    const [showFromPicker, setShowFromPicker] = useState(false);
+    const [showToPicker, setShowToPicker] = useState(false);
+  
+    const agents = ["--- select ---", "Agent A", "Agent B", "Agent C"];
+    const users = ["--- select ---", "User X", "User Y", "User Z"];
+    const states = [
+      "--- select ---",
+      "Madhya Pradesh",
+      "Maharashtra",
+      "Rajasthan",
+    ];
 
   const filteredReminders = remindersData.filter((item) =>
-    item.name.toLowerCase().includes(searchText.toLowerCase())
+    item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
 
@@ -123,7 +147,7 @@ function ReminderScreen() {
 
   return (
     <View style={styles.container}>
-     <LinearGradient colors={["#5975D9", "#070557"]} style={styles.header}>
+     <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
         <TouchableOpacity onPress={()=>router.back()}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
@@ -133,19 +157,168 @@ function ReminderScreen() {
         </TouchableOpacity>
       </LinearGradient>
 
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Type your text"
-        value={searchText}
-        onChangeText={setSearchText}
-      />
+       <View
+        style={{
+          flexDirection: "row",
+          marginHorizontal: 10,
+          alignItems: "center",
+        }}
+      >
+        <TextInput
+          placeholder="Search by name"
+          style={[styles.searchInput, { flex: 1 }]}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        <TouchableOpacity
+          onPress={() => setFilterModalVisible(true)}
+          style={styles.filterIcon}
+        >
+          <Ionicons name="filter" size={24} color="#4b3ba9" />
+        </TouchableOpacity>
+      </View>
 
+      <Modal
+        visible={filterModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.filterContainer}>
+            {/* Close Icon */}
+            <TouchableOpacity
+              onPress={() => setFilterModalVisible(false)}
+              style={styles.modalCloseIcon}
+            >
+              <Ionicons name="close" size={24} color="#000" />
+            </TouchableOpacity>
+
+            <Text style={styles.modalTitle}>Apply Filters</Text>
+
+            {/* Agent Picker */}
+            <Text style={styles.dateLabel}>Agent</Text>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={filterData.agent}
+                onValueChange={(itemValue) =>
+                  setFilterData({ ...filterData, agent: itemValue })
+                }
+                style={{ padding: 0, margin: -5 }}
+              >
+                {agents.map((a) => (
+                  <Picker.Item key={a} label={a || "Select Agent"} value={a} />
+                ))}
+              </Picker>
+            </View>
+
+            {/* User Picker */}
+            <Text style={styles.dateLabel}>User</Text>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={filterData.user}
+                onValueChange={(itemValue) =>
+                  setFilterData({ ...filterData, user: itemValue })
+                }
+                style={{ padding: 0, margin: -5 }}
+              >
+                {users.map((u) => (
+                  <Picker.Item key={u} label={u || "Select User"} value={u} />
+                ))}
+              </Picker>
+            </View>
+
+            {/* State Picker */}
+            <Text style={styles.dateLabel}>State</Text>
+            <View style={styles.pickerWrapper}>
+              <Picker
+                selectedValue={filterData.state}
+                onValueChange={(itemValue) =>
+                  setFilterData({ ...filterData, state: itemValue })
+                }
+                style={{ padding: 0, margin: -5 }}
+              >
+                {states.map((s) => (
+                  <Picker.Item key={s} label={s || "Select State"} value={s} />
+                ))}
+              </Picker>
+            </View>
+            {/* From Date Picker */}
+            <Text style={styles.dateLabel}>From Date</Text>
+            <TouchableOpacity
+              onPress={() => setShowFromPicker(true)}
+              style={styles.dateField}
+            >
+              <Text style={styles.dateValue}>
+                {fromDate.toLocaleDateString()}
+              </Text>
+            </TouchableOpacity>
+            <Text style={styles.dateLabel}>To Date</Text>
+            {/* To Date Picker */}
+            <TouchableOpacity
+              onPress={() => setShowToPicker(true)}
+              style={styles.dateField}
+            >
+              <Text style={styles.dateValue}>
+                {toDate.toLocaleDateString()}
+              </Text>
+            </TouchableOpacity>
+            {showFromPicker && (
+              <DateTimePicker
+                value={fromDate}
+                mode="date"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShowFromPicker(Platform.OS === "ios");
+                  if (selectedDate) setFromDate(selectedDate);
+                }}
+              />
+            )}
+
+            {showToPicker && (
+              <DateTimePicker
+                value={toDate}
+                mode="date"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShowToPicker(Platform.OS === "ios");
+                  if (selectedDate) setToDate(selectedDate);
+                }}
+              />
+            )}
+
+            {/* Buttons */}
+            <View style={styles.filterButtonsRow}>
+              <Button
+                mode="contained"
+                style={styles.searchBtn}
+                onPress={() => {
+                  // TODO: Apply filter logic
+                  setFilterModalVisible(false);
+                }}
+              >
+                Search
+              </Button>
+              <Button
+                mode="outlined"
+                style={styles.resetBtn}
+                onPress={() => {
+                  setFilterData({ agent: "", user: "", state: "" });
+                }}
+              >
+                Reset
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <FlatList
         data={filteredReminders}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <Card style={styles.card}>
-            <View style={styles.cardHeader}>
+            <TouchableOpacity onPress={()=>router.push('/(components)/followUpUserDetails')}>
+               <View style={styles.cardHeader}>
               <FontAwesome5 name="briefcase-medical" size={20} color="#0082CA" />
               <Text style={styles.cardTitle}>{item.name}</Text>
               
@@ -176,6 +349,7 @@ function ReminderScreen() {
 
             <TouchableOpacity>
               <Text style={styles.descriptionText}>▶ Description</Text>
+            </TouchableOpacity>
             </TouchableOpacity>
              {renderMenu(item)}
           </Card>
@@ -260,7 +434,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   createButton: {
-    backgroundColor: "#001f54",
+    backgroundColor: "#1F40B5",
     paddingVertical: 10,
     paddingHorizontal: 15,
     alignItems: "center",
@@ -285,12 +459,135 @@ const styles = StyleSheet.create({
   },
   menuContainer: {
     backgroundColor: "#fff",
-    padding: 10,
-    borderRadius: 10,
-    elevation: 5,
-    width: 160,
+    padding: 20, // increased padding
+    borderRadius: 16,
+    elevation: 8,
+    width: 280, // increased width
+    maxHeight: 400, // optional: in case items overflow
   },
+
   menuItem: {
     paddingVertical: 5,
+  },
+
+  filterIcon: {
+    marginLeft: 8,
+    backgroundColor: "#fff",
+    padding: 10,
+    borderRadius: 10,
+    elevation: 2,
+  },
+
+  filterContainer: {
+    backgroundColor: "#fff",
+    padding: 20,
+    margin: 20,
+    borderRadius: 10,
+    width: "90%",
+    elevation: 10,
+  },
+
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+
+  filterInput: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+
+  filterButtonsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+  },
+
+  searchBtn: {
+    flex: 1,
+    marginRight: 10,
+    backgroundColor: "#4b3ba9",
+  },
+
+  resetBtn: {
+    flex: 1,
+    borderColor: "#4b3ba9",
+  },
+  alertBox: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 20,
+    width: 300,
+    alignItems: "center",
+    elevation: 5,
+  },
+  alertIcon: {
+    fontSize: 36,
+    color: "#f0ad4e",
+    marginBottom: 10,
+  },
+  alertTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  alertMessage: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  alertButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  alertButton: {
+    flex: 1,
+    paddingVertical: 10,
+    marginHorizontal: 5,
+    borderRadius: 6,
+    alignItems: "center",
+  },
+  alertButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  dateField: {
+    backgroundColor: "#f0f0ff",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 0.5,
+    borderColor: "#4B65E9",
+  },
+  dateLabel: {
+    fontSize: 14,
+    color: "#444",
+    fontWeight: "600",
+  },
+  dateValue: {
+    fontSize: 16,
+
+    marginTop: 4,
+  },
+  modalCloseIcon: {
+    position: "absolute",
+    right: 10,
+    top: 10,
+    zIndex: 1,
+  },
+  pickerWrapper: {
+    backgroundColor: "#f0f0ff",
+    borderWidth: 0.5,
+    borderColor: "#4B65E9",
+    borderRadius: 8,
+    marginVertical: 8,
+    padding: -10,
   },
 });
