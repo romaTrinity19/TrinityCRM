@@ -7,15 +7,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
-    FlatList,
-    Modal,
-    Platform,
-    Pressable,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  FlatList,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { Button, Card } from "react-native-paper";
 import { withDrawer } from "./drawer";
@@ -56,7 +56,7 @@ const remindersData = [
     description: "",
   },
 
-{
+  {
     id: "5",
     name: "Pramod Agrawal ji",
     date: "14-10-2023",
@@ -79,76 +79,96 @@ type RootDrawerParamList = {
   Reminder: undefined;
 };
 function ReminderScreen() {
-      const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
-   const [searchQuery, setSearchQuery] = useState("");
-  
-    const [filterModalVisible, setFilterModalVisible] = useState(false);
-    const [filterData, setFilterData] = useState({
-      agent: "",
-      user: "",
-      state: "",
-    });
-  
-    const [fromDate, setFromDate] = useState(new Date());
-    const [toDate, setToDate] = useState(new Date());
-    const [showFromPicker, setShowFromPicker] = useState(false);
-    const [showToPicker, setShowToPicker] = useState(false);
-  
-    const agents = ["--- select ---", "Agent A", "Agent B", "Agent C"];
-    const users = ["--- select ---", "User X", "User Y", "User Z"];
-    const states = [
-      "--- select ---",
-      "Madhya Pradesh",
-      "Maharashtra",
-      "Rajasthan",
-    ];
+  const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [filterData, setFilterData] = useState({
+    agent: "",
+    user: "",
+    state: "",
+  });
+
+  const [fromDate, setFromDate] = useState(new Date());
+  const [toDate, setToDate] = useState(new Date());
+  const [showFromPicker, setShowFromPicker] = useState(false);
+  const [showToPicker, setShowToPicker] = useState(false);
+
+  const agents = ["--- select ---", "Agent A", "Agent B", "Agent C"];
+  const users = ["--- select ---", "User X", "User Y", "User Z"];
+  const states = [
+    "--- select ---",
+    "Madhya Pradesh",
+    "Maharashtra",
+    "Rajasthan",
+  ];
+
+  const formatDate = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   const filteredReminders = remindersData.filter((item) =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-
-    const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
 
   const menuItems = [
-    { label: "Edit", route: "/(pages)/newLeads" },
-    { label: "Follow Up", route: "/(components)/followUp" },
-
+    {
+      label: "Follow Up",
+      route: "/(components)/followUp",
+      icon: "time-outline",
+    },
+    { label: "Edit", route: "/(pages)/newLeads", icon: "create-outline" },
+    { label: "Delete", route: "/(pages)/message", icon: "trash" },
   ];
   const renderMenu = (item: any) => (
-    <Modal
-      transparent={true}
-      visible={selectedItem === item.id && menuVisible}
-      animationType="fade"
-      onRequestClose={() => setMenuVisible(false)}
-    >
-      <Pressable
-        style={styles.modalOverlay}
-        onPress={() => setMenuVisible(false)}
-      >
-        <View style={styles.menuContainer}>
-          {menuItems.map((menuItem) => (
-            <TouchableOpacity
-              key={menuItem.label}
-              style={styles.menuItem}
-              onPress={() => {
-                setMenuVisible(false);
-                router.push(menuItem.route as any);
-              }}
-            >
-              <Text>{menuItem.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </Pressable>
-    </Modal>
+     <Modal
+         transparent={true}
+         visible={selectedItem === item.id && menuVisible}
+         animationType="fade"
+         onRequestClose={() => setMenuVisible(false)}
+       >
+         <Pressable
+           style={styles.modalOverlay}
+           onPress={() => setMenuVisible(false)}
+         >
+           <View style={styles.menuContainer}>
+             {menuItems.map((menuItem) => (
+               <TouchableOpacity
+                 key={menuItem.label}
+                 style={styles.menuItem}
+                 onPress={() => {
+                   setMenuVisible(false);
+                   if (menuItem.route) {
+                     router.push(menuItem.route as any);
+                   }
+                 }}
+               >
+                 <View style={styles.menuItemRow}>
+                   <Ionicons
+                     name={menuItem.icon as any}
+                     size={18}
+                     color="#333"
+                     style={{ marginRight: 10 }}
+                   />
+                   <Text>{menuItem.label}</Text>
+                 </View>
+               </TouchableOpacity>
+             ))}
+           </View>
+         </Pressable>
+       </Modal>
   );
 
   return (
     <View style={styles.container}>
-     <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
-        <TouchableOpacity onPress={()=>router.back()}>
+      <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Reminder</Text>
@@ -157,7 +177,7 @@ function ReminderScreen() {
         </TouchableOpacity>
       </LinearGradient>
 
-       <View
+      <View
         style={{
           flexDirection: "row",
           marginHorizontal: 10,
@@ -249,9 +269,7 @@ function ReminderScreen() {
               onPress={() => setShowFromPicker(true)}
               style={styles.dateField}
             >
-              <Text style={styles.dateValue}>
-                {fromDate.toLocaleDateString()}
-              </Text>
+              <Text style={styles.dateValue}>{formatDate(fromDate)}</Text>
             </TouchableOpacity>
             <Text style={styles.dateLabel}>To Date</Text>
             {/* To Date Picker */}
@@ -259,9 +277,7 @@ function ReminderScreen() {
               onPress={() => setShowToPicker(true)}
               style={styles.dateField}
             >
-              <Text style={styles.dateValue}>
-                {toDate.toLocaleDateString()}
-              </Text>
+              <Text style={styles.dateValue}>{formatDate(toDate)}</Text>
             </TouchableOpacity>
             {showFromPicker && (
               <DateTimePicker
@@ -317,47 +333,55 @@ function ReminderScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <Card style={styles.card}>
-            <TouchableOpacity onPress={()=>router.push('/(components)/followUpUserDetails')}>
-               <View style={styles.cardHeader}>
-              <FontAwesome5 name="briefcase-medical" size={20} color="#0082CA" />
-              <Text style={styles.cardTitle}>{item.name}</Text>
-              
-              <TouchableOpacity
+            <TouchableOpacity
+              onPress={() => router.push("/(components)/followUpUserDetails")}
+            >
+              <View style={styles.cardHeader}>
+                <FontAwesome5
+                  name="briefcase-medical"
+                  size={20}
+                  color="#0082CA"
+                />
+                <Text style={styles.cardTitle}>{item.name}</Text>
+
+                <TouchableOpacity
                   onPress={() => {
                     setSelectedItem(item.id);
                     setMenuVisible(true);
                   }}
                 >
-                   <Ionicons name="ellipsis-vertical" size={20} color="gray" />
+                  <Ionicons name="ellipsis-vertical" size={20} color="gray" />
                 </TouchableOpacity>
-            </View>
+              </View>
 
-            <View style={styles.cardDetailRow}>
-              <Text style={styles.cardLabel}>Reminder Date</Text>
-              <Text style={styles.cardValue}>{item.date}</Text>
-            </View>
+              <View style={styles.cardDetailRow}>
+                <Text style={styles.cardLabel}>Reminder Date</Text>
+                <Text style={styles.cardValue}>{item.date}</Text>
+              </View>
 
-            <View style={styles.cardDetailRow}>
-              <Text style={styles.cardLabel}>Reminder Time</Text>
-              <Text style={styles.cardValue}>{item.time}</Text>
-            </View>
+              <View style={styles.cardDetailRow}>
+                <Text style={styles.cardLabel}>Reminder Time</Text>
+                <Text style={styles.cardValue}>{item.time}</Text>
+              </View>
 
-            <View style={styles.cardDetailRow}>
-              <Text style={styles.cardLabel}>Priority</Text>
-              <Text style={styles.urgentBadge}>{item.priority}</Text>
-            </View>
+              <View style={styles.cardDetailRow}>
+                <Text style={styles.cardLabel}>Priority</Text>
+                <Text style={styles.urgentBadge}>{item.priority}</Text>
+              </View>
 
-            <TouchableOpacity>
-              <Text style={styles.descriptionText}>▶ Description</Text>
+              <TouchableOpacity>
+                <Text style={styles.descriptionText}>▶ Description</Text>
+              </TouchableOpacity>
             </TouchableOpacity>
-            </TouchableOpacity>
-             {renderMenu(item)}
+            {renderMenu(item)}
           </Card>
         )}
       />
 
-      <TouchableOpacity style={styles.createButton}
-       onPress={() =>router.push('/(components)/createReminder')}>
+      <TouchableOpacity
+        style={styles.createButton}
+        onPress={() => router.push("/(components)/createReminder")}
+      >
         <Text style={styles.createButtonText}>+ Create Reminder Follow Up</Text>
       </TouchableOpacity>
     </View>
@@ -370,7 +394,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f4f7fe",
-    paddingTop: 40,
+    paddingTop: 30,
   },
   header: {
     flexDirection: "row",
@@ -415,7 +439,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   cardLabel: {
-    color:"#0082CA",
+    color: "#0082CA",
     fontWeight: "600",
   },
   cardValue: {
@@ -430,7 +454,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   descriptionText: {
-    color:"#0082CA",
+    color: "#0082CA",
     marginTop: 5,
   },
   createButton: {
@@ -439,8 +463,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius:20,
-    marginHorizontal:10,
+    borderRadius: 20,
+    marginHorizontal: 10,
     position: "absolute",
     bottom: 40,
     left: 0,
@@ -451,7 +475,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-   modalOverlay: {
+  modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.3)",
     justifyContent: "center",
@@ -459,15 +483,17 @@ const styles = StyleSheet.create({
   },
   menuContainer: {
     backgroundColor: "#fff",
-    padding: 20, // increased padding
+    padding: 20,  
     borderRadius: 16,
     elevation: 8,
-    width: 280, // increased width
-    maxHeight: 400, // optional: in case items overflow
+    width: 280,    
   },
 
   menuItem: {
     paddingVertical: 5,
+  }, menuItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   filterIcon: {
