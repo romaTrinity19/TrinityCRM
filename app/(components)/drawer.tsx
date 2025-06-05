@@ -115,6 +115,12 @@ const DrawerContent = (props: any) => {
   );
 };
 
+const PlaceholderScreen = () => (
+  <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+    <Text>Welcome to CRM App</Text>
+  </View>
+);
+
 export const withDrawer = (
   ScreenComponent: any,
   screenName: string = "Main"
@@ -129,6 +135,8 @@ export const withDrawer = (
     </Drawer.Navigator>
   );
 };
+
+export default withDrawer(PlaceholderScreen);
 
 const styles = StyleSheet.create({
   drawerHeader: {
@@ -150,3 +158,4 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
 });
+ 

@@ -180,7 +180,13 @@ function NewLeadsScreen() {
       </View>
     </Modal>
   );
-
+  
+const formatDate = (date: Date) => {
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
   return (
     <View style={styles.container}>
       <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
@@ -290,7 +296,7 @@ function NewLeadsScreen() {
               style={styles.dateField}
             >
               <Text style={styles.dateValue}>
-                {fromDate.toLocaleDateString()}
+               {formatDate(fromDate)}
               </Text>
             </TouchableOpacity>
             <Text style={styles.dateLabel}>To Date</Text>
@@ -300,7 +306,8 @@ function NewLeadsScreen() {
               style={styles.dateField}
             >
               <Text style={styles.dateValue}>
-                {toDate.toLocaleDateString()}
+              {formatDate(toDate)}
+                
               </Text>
             </TouchableOpacity>
             {showFromPicker && (

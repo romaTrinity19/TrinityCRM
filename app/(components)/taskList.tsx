@@ -8,19 +8,21 @@ import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  Platform,
 } from "react-native";
-import { Card, Button } from "react-native-paper";
+import { Button, Card } from "react-native-paper";
 import { withDrawer } from "./drawer";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const remindersData = [
   {
@@ -28,6 +30,7 @@ const remindersData = [
     name: "Richa",
     date: "04-09-2024",
     time: "06:30 pm",
+    priority: "Urgent",
     description: "",
   },
   {
@@ -35,6 +38,7 @@ const remindersData = [
     name: "Vaibhav Singhaniya",
     date: "20-03-2024",
     time: "04:00 pm",
+    priority: "Urgent",
     description: "",
   },
   {
@@ -42,6 +46,7 @@ const remindersData = [
     name: "Pramod Agrawal ji",
     date: "14-10-2023",
     time: "07:25 am",
+    priority: "Urgent",
     description: "",
   },
   {
@@ -49,6 +54,7 @@ const remindersData = [
     name: "Shreyansh",
     date: "16-10-2023",
     time: "11:00 am",
+    priority: "Urgent",
     description: "",
   },
 
@@ -57,6 +63,7 @@ const remindersData = [
     name: "Pramod Agrawal ji",
     date: "14-10-2023",
     time: "07:25 am",
+    priority: "Urgent",
     description: "",
   },
   {
@@ -64,6 +71,7 @@ const remindersData = [
     name: "Shreyansh",
     date: "16-10-2023",
     time: "11:00 am",
+    priority: "Urgent",
     description: "",
   },
 ];
@@ -87,12 +95,7 @@ function ReminderScreen() {
   const [toDate, setToDate] = useState(new Date());
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
-  const formatDate = (date: Date) => {
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
+
   const agents = ["--- select ---", "Agent A", "Agent B", "Agent C"];
   const users = ["--- select ---", "User X", "User Y", "User Z"];
   const states = [
@@ -101,6 +104,13 @@ function ReminderScreen() {
     "Maharashtra",
     "Rajasthan",
   ];
+
+  const formatDate = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   const filteredReminders = remindersData.filter((item) =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -158,169 +168,180 @@ function ReminderScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Follow Up List</Text>
-        <TouchableOpacity onPress={() => navigation.openDrawer()}>
-          <Ionicons name="menu" size={24} color="#fff" />
-        </TouchableOpacity>
-      </LinearGradient>
-
-      <View
-        style={{
-          flexDirection: "row",
-          marginHorizontal: 10,
-          alignItems: "center",
-        }}
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#f2f6ff" }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
       >
-        <TextInput
-          placeholder="Search by name"
-          style={[styles.searchInput, { flex: 1 }]}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        <TouchableOpacity
-          onPress={() => setFilterModalVisible(true)}
-          style={styles.filterIcon}
+        <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Task List</Text>
+          <TouchableOpacity onPress={() => navigation.openDrawer()}>
+            <Ionicons name="menu" size={24} color="#fff" />
+          </TouchableOpacity>
+        </LinearGradient>
+
+        <View
+          style={{
+            flexDirection: "row",
+            marginHorizontal: 10,
+            alignItems: "center",
+          }}
         >
-          <Ionicons name="filter" size={24} color="#4b3ba9" />
-        </TouchableOpacity>
-      </View>
+          <TextInput
+            placeholder="Search by name"
+            style={[styles.searchInput, { flex: 1 }]}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          <TouchableOpacity
+            onPress={() => setFilterModalVisible(true)}
+            style={styles.filterIcon}
+          >
+            <Ionicons name="filter" size={24} color="#4b3ba9" />
+          </TouchableOpacity>
+        </View>
 
-      <Modal
-        visible={filterModalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setFilterModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.filterContainer}>
-            {/* Close Icon */}
-            <TouchableOpacity
-              onPress={() => setFilterModalVisible(false)}
-              style={styles.modalCloseIcon}
-            >
-              <Ionicons name="close" size={24} color="#000" />
-            </TouchableOpacity>
-
-            <Text style={styles.modalTitle}>Apply Filters</Text>
-
-            {/* Agent Picker */}
-            <Text style={styles.dateLabel}>Agent</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={filterData.agent}
-                onValueChange={(itemValue) =>
-                  setFilterData({ ...filterData, agent: itemValue })
-                }
-                style={{ padding: 0, margin: -5 }}
+        <Modal
+          visible={filterModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setFilterModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.filterContainer}>
+              {/* Close Icon */}
+              <TouchableOpacity
+                onPress={() => setFilterModalVisible(false)}
+                style={styles.modalCloseIcon}
               >
-                {agents.map((a) => (
-                  <Picker.Item key={a} label={a || "Select Agent"} value={a} />
-                ))}
-              </Picker>
-            </View>
+                <Ionicons name="close" size={24} color="#000" />
+              </TouchableOpacity>
 
-            {/* User Picker */}
-            <Text style={styles.dateLabel}>User</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={filterData.user}
-                onValueChange={(itemValue) =>
-                  setFilterData({ ...filterData, user: itemValue })
-                }
-                style={{ padding: 0, margin: -5 }}
-              >
-                {users.map((u) => (
-                  <Picker.Item key={u} label={u || "Select User"} value={u} />
-                ))}
-              </Picker>
-            </View>
+              <Text style={styles.modalTitle}>Apply Filters</Text>
 
-            {/* State Picker */}
-            <Text style={styles.dateLabel}>State</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={filterData.state}
-                onValueChange={(itemValue) =>
-                  setFilterData({ ...filterData, state: itemValue })
-                }
-                style={{ padding: 0, margin: -5 }}
-              >
-                {states.map((s) => (
-                  <Picker.Item key={s} label={s || "Select State"} value={s} />
-                ))}
-              </Picker>
-            </View>
-            {/* From Date Picker */}
-            <Text style={styles.dateLabel}>From Date</Text>
-            <TouchableOpacity
-              onPress={() => setShowFromPicker(true)}
-              style={styles.dateField}
-            >
-              <Text style={styles.dateValue}>{formatDate(fromDate)}</Text>
-            </TouchableOpacity>
-            <Text style={styles.dateLabel}>To Date</Text>
-            {/* To Date Picker */}
-            <TouchableOpacity
-              onPress={() => setShowToPicker(true)}
-              style={styles.dateField}
-            >
-              <Text style={styles.dateValue}>{formatDate(toDate)}</Text>
-            </TouchableOpacity>
-            {showFromPicker && (
-              <DateTimePicker
-                value={fromDate}
-                mode="date"
-                display="default"
-                onChange={(event, selectedDate) => {
-                  setShowFromPicker(Platform.OS === "ios");
-                  if (selectedDate) setFromDate(selectedDate);
-                }}
-              />
-            )}
+              {/* Agent Picker */}
+              <Text style={styles.dateLabel}>Agent</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={filterData.agent}
+                  onValueChange={(itemValue) =>
+                    setFilterData({ ...filterData, agent: itemValue })
+                  }
+                  style={{ padding: 0, margin: -5 }}
+                >
+                  {agents.map((a) => (
+                    <Picker.Item
+                      key={a}
+                      label={a || "Select Agent"}
+                      value={a}
+                    />
+                  ))}
+                </Picker>
+              </View>
 
-            {showToPicker && (
-              <DateTimePicker
-                value={toDate}
-                mode="date"
-                display="default"
-                onChange={(event, selectedDate) => {
-                  setShowToPicker(Platform.OS === "ios");
-                  if (selectedDate) setToDate(selectedDate);
-                }}
-              />
-            )}
+              {/* User Picker */}
+              <Text style={styles.dateLabel}>User</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={filterData.user}
+                  onValueChange={(itemValue) =>
+                    setFilterData({ ...filterData, user: itemValue })
+                  }
+                  style={{ padding: 0, margin: -5 }}
+                >
+                  {users.map((u) => (
+                    <Picker.Item key={u} label={u || "Select User"} value={u} />
+                  ))}
+                </Picker>
+              </View>
 
-            {/* Buttons */}
-            <View style={styles.filterButtonsRow}>
-              <Button
-                mode="contained"
-                style={styles.searchBtn}
-                onPress={() => {
-                  // TODO: Apply filter logic
-                  setFilterModalVisible(false);
-                }}
+              {/* State Picker */}
+              <Text style={styles.dateLabel}>State</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={filterData.state}
+                  onValueChange={(itemValue) =>
+                    setFilterData({ ...filterData, state: itemValue })
+                  }
+                  style={{ padding: 0, margin: -5 }}
+                >
+                  {states.map((s) => (
+                    <Picker.Item
+                      key={s}
+                      label={s || "Select State"}
+                      value={s}
+                    />
+                  ))}
+                </Picker>
+              </View>
+              {/* From Date Picker */}
+              <Text style={styles.dateLabel}>From Date</Text>
+              <TouchableOpacity
+                onPress={() => setShowFromPicker(true)}
+                style={styles.dateField}
               >
-                Search
-              </Button>
-              <Button
-                mode="outlined"
-                style={styles.resetBtn}
-                onPress={() => {
-                  setFilterData({ agent: "", user: "", state: "" });
-                }}
+                <Text style={styles.dateValue}>{formatDate(fromDate)}</Text>
+              </TouchableOpacity>
+              <Text style={styles.dateLabel}>To Date</Text>
+              {/* To Date Picker */}
+              <TouchableOpacity
+                onPress={() => setShowToPicker(true)}
+                style={styles.dateField}
               >
-                Reset
-              </Button>
+                <Text style={styles.dateValue}>{formatDate(toDate)}</Text>
+              </TouchableOpacity>
+              {showFromPicker && (
+                <DateTimePicker
+                  value={fromDate}
+                  mode="date"
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowFromPicker(Platform.OS === "ios");
+                    if (selectedDate) setFromDate(selectedDate);
+                  }}
+                />
+              )}
+
+              {showToPicker && (
+                <DateTimePicker
+                  value={toDate}
+                  mode="date"
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowToPicker(Platform.OS === "ios");
+                    if (selectedDate) setToDate(selectedDate);
+                  }}
+                />
+              )}
+
+              {/* Buttons */}
+              <View style={styles.filterButtonsRow}>
+                <Button
+                  mode="contained"
+                  style={styles.searchBtn}
+                  onPress={() => {
+                    // TODO: Apply filter logic
+                    setFilterModalVisible(false);
+                  }}
+                >
+                  Search
+                </Button>
+                <Button
+                  mode="outlined"
+                  style={styles.resetBtn}
+                  onPress={() => {
+                    setFilterData({ agent: "", user: "", state: "" });
+                  }}
+                >
+                  Reset
+                </Button>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-      <View style={{ paddingBottom: 200 }}>
+        </Modal>
         <FlatList
           data={filteredReminders}
           keyExtractor={(item) => item.id}
@@ -348,13 +369,18 @@ function ReminderScreen() {
                 </View>
 
                 <View style={styles.cardDetailRow}>
-                  <Text style={styles.cardLabel}>Follow Up Date</Text>
+                  <Text style={styles.cardLabel}>Reminder Date</Text>
                   <Text style={styles.cardValue}>{item.date}</Text>
                 </View>
 
                 <View style={styles.cardDetailRow}>
-                  <Text style={styles.cardLabel}>Follow Up Time</Text>
+                  <Text style={styles.cardLabel}>Reminder Time</Text>
                   <Text style={styles.cardValue}>{item.time}</Text>
+                </View>
+
+                <View style={styles.cardDetailRow}>
+                  <Text style={styles.cardLabel}>Priority</Text>
+                  <Text style={styles.urgentBadge}>{item.priority}</Text>
                 </View>
 
                 <TouchableOpacity>
@@ -365,14 +391,15 @@ function ReminderScreen() {
             </Card>
           )}
         />
-      </View>
-      <TouchableOpacity
-        style={styles.createButton}
-        onPress={() => router.push("/(components)/followUp")}
-      >
-        <Text style={styles.createButtonText}>Follow Up</Text>
-      </TouchableOpacity>
-    </View>
+
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={() => router.push("/(components)/taskManagement")}
+        >
+          <Text style={styles.createButtonText}>Task Management</Text>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -415,11 +442,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  menuItemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
   cardTitle: {
     fontSize: 16,
     color: "#0082CA",
@@ -451,7 +473,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   createButton: {
-    backgroundColor: "#112980",
+    backgroundColor: "#1F40B5",
     paddingVertical: 10,
     paddingHorizontal: 15,
     alignItems: "center",
@@ -476,15 +498,18 @@ const styles = StyleSheet.create({
   },
   menuContainer: {
     backgroundColor: "#fff",
-    padding: 20, // increased padding
+    padding: 20,
     borderRadius: 16,
     elevation: 8,
-    width: 280, // increased width
-    maxHeight: 400, // optional: in case items overflow
+    width: 280,
   },
 
   menuItem: {
     paddingVertical: 5,
+  },
+  menuItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   filterIcon: {

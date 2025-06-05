@@ -1,6 +1,4 @@
 import { Ionicons } from "@expo/vector-icons";
-
-import { FontAwesome5 } from "@expo/vector-icons";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -11,68 +9,56 @@ import {
   Modal,
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
   View,
-  Platform,
 } from "react-native";
-import { Card, Button } from "react-native-paper";
+import { Button, Card, IconButton, Text } from "react-native-paper";
 import { withDrawer } from "./drawer";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { Platform } from "react-native";
 
-const remindersData = [
+const leads = [
   {
     id: "1",
-    name: "Richa",
-    date: "04-09-2024",
-    time: "06:30 pm",
-    description: "",
+    name: " Kush Bhaiya",
+    service: "Stock Management App",
+    phone: "9131563996, 9131563996",
+    amount: "₹10,000",
+    date: "14th May 2025",
+    email: "example@gmail.com",
   },
   {
     id: "2",
-    name: "Vaibhav Singhaniya",
-    date: "20-03-2024",
-    time: "04:00 pm",
-    description: "",
+    name: "  Ravish Talreja",
+    service: "Social Media and digital",
+    phone: "9981515000, 9981515000",
+    date: "14th May 2025",
+    email: "example@gmail.com",
   },
   {
     id: "3",
-    name: "Pramod Agrawal ji",
-    date: "14-10-2023",
-    time: "07:25 am",
-    description: "",
+    name: "  Amit Ji Jain Traders",
+    service: "Lable prinintg software",
+    phone: "9827138487, 9827138487",
+    date: "14th May 2025",
+    email: "example@gmail.com",
   },
   {
     id: "4",
-    name: "Shreyansh",
-    date: "16-10-2023",
-    time: "11:00 am",
-    description: "",
-  },
-
-  {
-    id: "5",
-    name: "Pramod Agrawal ji",
-    date: "14-10-2023",
-    time: "07:25 am",
-    description: "",
-  },
-  {
-    id: "6",
-    name: "Shreyansh",
-    date: "16-10-2023",
-    time: "11:00 am",
-    description: "",
+    name: "  Manoj Borker",
+    service: "Website",
+    phone: "",
+    date: "",
   },
 ];
 type RootDrawerParamList = {
   Dashboard: undefined;
   Qualification: undefined;
-  Reminder: undefined;
+  Quatation: undefined;
 };
-function ReminderScreen() {
+function Quatation() {
   const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -82,42 +68,41 @@ function ReminderScreen() {
     user: "",
     state: "",
   });
-
-  const [fromDate, setFromDate] = useState(new Date());
-  const [toDate, setToDate] = useState(new Date());
-  const [showFromPicker, setShowFromPicker] = useState(false);
-  const [showToPicker, setShowToPicker] = useState(false);
   const formatDate = (date: Date) => {
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   };
-  const agents = ["--- select ---", "Agent A", "Agent B", "Agent C"];
-  const users = ["--- select ---", "User X", "User Y", "User Z"];
-  const states = [
-    "--- select ---",
-    "Madhya Pradesh",
-    "Maharashtra",
-    "Rajasthan",
-  ];
 
-  const filteredReminders = remindersData.filter((item) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const [fromDate, setFromDate] = useState(new Date());
+  const [toDate, setToDate] = useState(new Date());
+  const [showFromPicker, setShowFromPicker] = useState(false);
+  const [showToPicker, setShowToPicker] = useState(false);
+  const [createCustomerModalVisible, setCreateCustomerModalVisible] =
+    useState(false);
+
+  const Customer = ["--- select ---", "Customer A", "Customer B", "Customer C"];
+
+  const filteredLeads = leads.filter((lead) =>
+    lead.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
-
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const menuItems = [
+    { label: "View", route: "/(components)/invoiceDetails", emoji: "👁️" },
+    { label: "Print", route: "/(pages)/newLeads", emoji: "🖨️" },
+    { label: "Edit", route: "/(pages)/newLeads", emoji: "✏️" },
     {
-      label: "Follow Up",
-      route: "/(components)/followUp",
-      icon: "time-outline",
+      label: "WhatsApp Chat",
+      route: "/(pages)/message",
+      emoji: "💬",
     },
-    { label: "Edit", route: "/(pages)/newLeads", icon: "create-outline" },
-    { label: "Delete", route: "/(pages)/message", icon: "trash" },
+    { label: "Call", route: "CallScreen", emoji: "📞" },
+    { label: "Delete", route: "/(pages)/message", emoji: "🗑️" },
   ];
+
   const renderMenu = (item: any) => (
     <Modal
       transparent={true}
@@ -129,11 +114,12 @@ function ReminderScreen() {
         style={styles.modalOverlay}
         onPress={() => setMenuVisible(false)}
       >
-        <View style={styles.menuContainer}>
+        <View style={styles.menuContainer2}>
           {menuItems.map((menuItem) => (
             <TouchableOpacity
               key={menuItem.label}
-              style={styles.menuItem}
+              style={styles.menuItem2}
+              activeOpacity={0.7}
               onPress={() => {
                 setMenuVisible(false);
                 if (menuItem.route) {
@@ -141,14 +127,9 @@ function ReminderScreen() {
                 }
               }}
             >
-              <View style={styles.menuItemRow}>
-                <Ionicons
-                  name={menuItem.icon as any}
-                  size={18}
-                  color="#333"
-                  style={{ marginRight: 10 }}
-                />
-                <Text>{menuItem.label}</Text>
+              <View style={styles.menuItemRow2}>
+                <Text style={styles.menuEmoji}>{menuItem.emoji}</Text>
+                <Text style={styles.menuText}>{menuItem.label}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -157,18 +138,57 @@ function ReminderScreen() {
     </Modal>
   );
 
+  const CreateCustomer = (item: any) => (
+    <Modal
+      visible={createCustomerModalVisible}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setCreateCustomerModalVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.alertBox}>
+          <Text style={styles.alertIcon}>❗</Text>
+          <Text style={styles.alertTitle}>Are you sure?</Text>
+          <Text style={styles.alertMessage}>
+            You won't be able to revert this!
+          </Text>
+          <View style={styles.alertButtons}>
+            <TouchableOpacity
+              style={[styles.alertButton, { backgroundColor: "#4b3ba9" }]}
+              onPress={() => {
+                setCreateCustomerModalVisible(false);
+                // Action logic here...
+              }}
+            >
+              <Text style={styles.alertButtonText}>Yes!</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.alertButton, { backgroundColor: "#f23547" }]}
+              onPress={() => setCreateCustomerModalVisible(false)}
+            >
+              <Text style={styles.alertButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <View style={styles.container}>
       <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Follow Up List</Text>
-        <TouchableOpacity onPress={() => navigation.openDrawer()}>
-          <Ionicons name="menu" size={24} color="#fff" />
-        </TouchableOpacity>
-      </LinearGradient>
+        <View style={styles.headerContent}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" color="#fff" size={24} />
+          </TouchableOpacity>
 
+          <Text style={styles.headerTitle}>Invoice</Text>
+
+          <TouchableOpacity onPress={() => navigation.openDrawer()}>
+            <Ionicons name="menu" color="#fff" size={24} />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
       <View
         style={{
           flexDirection: "row",
@@ -186,7 +206,7 @@ function ReminderScreen() {
           onPress={() => setFilterModalVisible(true)}
           style={styles.filterIcon}
         >
-          <Ionicons name="filter" size={24} color="#4b3ba9" />
+          <Ionicons name="filter" size={24} color="#1F40B5" />
         </TouchableOpacity>
       </View>
 
@@ -208,24 +228,8 @@ function ReminderScreen() {
 
             <Text style={styles.modalTitle}>Apply Filters</Text>
 
-            {/* Agent Picker */}
-            <Text style={styles.dateLabel}>Agent</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={filterData.agent}
-                onValueChange={(itemValue) =>
-                  setFilterData({ ...filterData, agent: itemValue })
-                }
-                style={{ padding: 0, margin: -5 }}
-              >
-                {agents.map((a) => (
-                  <Picker.Item key={a} label={a || "Select Agent"} value={a} />
-                ))}
-              </Picker>
-            </View>
-
             {/* User Picker */}
-            <Text style={styles.dateLabel}>User</Text>
+            <Text style={styles.dateLabel}>Customer</Text>
             <View style={styles.pickerWrapper}>
               <Picker
                 selectedValue={filterData.user}
@@ -234,27 +238,16 @@ function ReminderScreen() {
                 }
                 style={{ padding: 0, margin: -5 }}
               >
-                {users.map((u) => (
-                  <Picker.Item key={u} label={u || "Select User"} value={u} />
+                {Customer.map((u) => (
+                  <Picker.Item
+                    key={u}
+                    label={u || "Select Customer"}
+                    value={u}
+                  />
                 ))}
               </Picker>
             </View>
 
-            {/* State Picker */}
-            <Text style={styles.dateLabel}>State</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={filterData.state}
-                onValueChange={(itemValue) =>
-                  setFilterData({ ...filterData, state: itemValue })
-                }
-                style={{ padding: 0, margin: -5 }}
-              >
-                {states.map((s) => (
-                  <Picker.Item key={s} label={s || "Select State"} value={s} />
-                ))}
-              </Picker>
-            </View>
             {/* From Date Picker */}
             <Text style={styles.dateLabel}>From Date</Text>
             <TouchableOpacity
@@ -320,153 +313,163 @@ function ReminderScreen() {
           </View>
         </View>
       </Modal>
-      <View style={{ paddingBottom: 200 }}>
-        <FlatList
-          data={filteredReminders}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <Card style={styles.card}>
-              <TouchableOpacity
-                onPress={() => router.push("/(components)/followUpUserDetails")}
-              >
-                <View style={styles.cardHeader}>
-                  <FontAwesome5
-                    name="briefcase-medical"
-                    size={20}
-                    color="#0082CA"
-                  />
-                  <Text style={styles.cardTitle}>{item.name}</Text>
 
-                  <TouchableOpacity
-                    onPress={() => {
-                      setSelectedItem(item.id);
-                      setMenuVisible(true);
-                    }}
-                  >
-                    <Ionicons name="ellipsis-vertical" size={20} color="gray" />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.cardDetailRow}>
-                  <Text style={styles.cardLabel}>Follow Up Date</Text>
-                  <Text style={styles.cardValue}>{item.date}</Text>
-                </View>
-
-                <View style={styles.cardDetailRow}>
-                  <Text style={styles.cardLabel}>Follow Up Time</Text>
-                  <Text style={styles.cardValue}>{item.time}</Text>
-                </View>
-
-                <TouchableOpacity>
-                  <Text style={styles.descriptionText}>▶ Description</Text>
-                </TouchableOpacity>
-              </TouchableOpacity>
-              {renderMenu(item)}
-            </Card>
-          )}
-        />
-      </View>
-      <TouchableOpacity
-        style={styles.createButton}
-        onPress={() => router.push("/(components)/followUp")}
+      <View
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexDirection: "row",
+          marginHorizontal: 20,
+          marginVertical: 10,
+        }}
       >
-        <Text style={styles.createButtonText}>Follow Up</Text>
-      </TouchableOpacity>
+        <Text style={{ color: "#000", fontSize: 18 }}>Quatation Sent</Text>
+        <Text style={{ color: "#000", fontSize: 18 }}>₹ 1000</Text>
+      </View>
+      <FlatList
+        data={filteredLeads}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item, index }) => (
+          <Card style={styles.card} mode="outlined">
+            <Card.Title
+              title={`${index + 1}. ${item.name}`}
+              right={() => (
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedItem(item.id);
+                    setMenuVisible(true);
+                  }}
+                >
+                  <IconButton icon="dots-vertical" />
+                </TouchableOpacity>
+              )}
+              titleStyle={{ color: "#1F40B5" }}
+              left={() => <IconButton icon="school" iconColor={"#1F40B5"} />}
+            />
+            <View style={styles.horizontalLine} />
+            <Card.Content>
+              <View style={styles.row}>
+                <IconButton
+                  icon="bookmark-outline"
+                  size={18}
+                  iconColor="#1F40B5"
+                />
+                <Text>{item.service}</Text>
+              </View>
+              {item.email ? (
+                <View style={styles.row}>
+                  <IconButton icon="mail" size={18} iconColor="#1F40B5" />
+                  <Text>{item.email}</Text>
+                </View>
+              ) : null}
+              {item.phone ? (
+                <View style={styles.row}>
+                  <IconButton
+                    icon="phone-outline"
+                    size={18}
+                    iconColor="#1F40B5"
+                  />
+                  <Text>{item.phone}</Text>
+                </View>
+              ) : null}
+
+              {item.amount ? (
+                <View style={styles.row}>
+                  <IconButton
+                    icon="wallet-outline"
+                    size={18}
+                    iconColor="#1F40B5"
+                  />
+                  <Text>{item.amount}</Text>
+                </View>
+              ) : null}
+              {item.date ? (
+                <View style={styles.row}>
+                  <IconButton icon="calendar" size={18} iconColor="#1F40B5" />
+                  <Text>{item.date}</Text>
+                </View>
+              ) : null}
+            </Card.Content>
+            {renderMenu(item)}
+          </Card>
+        )}
+      />
+      <CreateCustomer />
+      <Button
+        icon="plus"
+        mode="contained"
+        style={styles.createButton}
+        labelStyle={{ fontSize: 16 }}
+        onPress={() => router.push("/(components)/createInvoice")}
+      >
+        Create New Invoice
+      </Button>
     </View>
   );
 }
 
-export default withDrawer(ReminderScreen, "Reminder");
+export default withDrawer(Quatation, "Quatation");
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f4f7fe",
+    backgroundColor: "#edf1fd",
     paddingTop: 30,
   },
   header: {
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+  },
+  headerContent: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#004c91",
-    padding: 15,
+    justifyContent: "space-between",
   },
   headerTitle: {
     color: "#fff",
     fontSize: 20,
-    fontWeight: "bold",
+    textAlign: "center",
+    flex: 1,
+    marginHorizontal: 12,
   },
   searchInput: {
-    margin: 10,
-    padding: 10,
     backgroundColor: "#fff",
     borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
     fontSize: 16,
+    marginVertical: 15,
+    marginHorizontal: 10,
+  },
+  horizontalLine: {
+    height: 1,
+    backgroundColor: "#1F40B5",
+    marginHorizontal: 16,
+    marginTop: -15,
+    marginBottom: 4,
+    opacity: 0.5,
   },
   card: {
+    marginBottom: 20,
+    borderRadius: 30,
     backgroundColor: "#fff",
+    borderColor: "#1F40B5",
     marginHorizontal: 10,
-    marginVertical: 5,
-    borderRadius: 10,
-    padding: 10,
   },
-  cardHeader: {
+  row: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-  },
-  menuItemRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-
-  cardTitle: {
-    fontSize: 16,
-    color: "#0082CA",
-    flex: 1,
-    marginLeft: 10,
-  },
-  cardDetailRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 5,
-  },
-  cardLabel: {
-    color: "#0082CA",
-    fontWeight: "600",
-  },
-  cardValue: {
-    color: "#000",
-  },
-  urgentBadge: {
-    backgroundColor: "#ff3b30",
-    color: "#fff",
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    borderRadius: 10,
-    fontSize: 12,
-  },
-  descriptionText: {
-    color: "#0082CA",
-    marginTop: 5,
+    marginTop: -10,
   },
   createButton: {
-    backgroundColor: "#112980",
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 20,
-    marginHorizontal: 10,
-    position: "absolute",
-    bottom: 40,
-    left: 0,
-    right: 0,
-  },
-  createButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    backgroundColor: "#1F40B5",
+    borderRadius: 25,
+    marginBottom: 40,
+    paddingVertical: 2,
+    alignSelf: "center",
+    width: "90%",
+    marginTop: 20,
   },
   modalOverlay: {
     flex: 1,
@@ -476,13 +479,11 @@ const styles = StyleSheet.create({
   },
   menuContainer: {
     backgroundColor: "#fff",
-    padding: 20, // increased padding
-    borderRadius: 16,
-    elevation: 8,
-    width: 280, // increased width
-    maxHeight: 400, // optional: in case items overflow
+    padding: 10,
+    borderRadius: 10,
+    elevation: 5,
+    width: 160,
   },
-
   menuItem: {
     paddingVertical: 5,
   },
@@ -593,11 +594,41 @@ const styles = StyleSheet.create({
 
     marginTop: 4,
   },
-  modalCloseIcon: {
-    position: "absolute",
-    right: 10,
-    top: 10,
-    zIndex: 1,
+
+  menuContainer2: {
+    backgroundColor: "#fff",
+    padding: 24,
+    borderRadius: 20,
+    elevation: 10,
+    width: 320,
+    maxHeight: 450,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+
+  menuItem2: {
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderBottomWidth: 0.5,
+    borderColor: "#ddd",
+  },
+
+  menuItemRow2: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  menuEmoji: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+
+  menuText: {
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "500",
   },
   pickerWrapper: {
     backgroundColor: "#f0f0ff",
@@ -606,5 +637,17 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginVertical: 8,
     padding: -10,
+  },
+
+  modalCloseIcon: {
+    position: "absolute",
+    right: 10,
+    top: 10,
+    zIndex: 1,
+  },
+
+  menuItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
   },
 });

@@ -1,6 +1,7 @@
 import {
   createDrawerNavigator,
   DrawerContentScrollView,
+  DrawerNavigationProp,
 } from "@react-navigation/drawer";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
@@ -15,125 +16,19 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import CustomerInteractionStats from "../(components)/dashboardCard";
+import { withDrawer } from "../(components)/drawer";
+import { useNavigation } from "@react-navigation/native";
 
-const Drawer = createDrawerNavigator();
-
-const DrawerContent = (props: any) => {
-  return (
-    <DrawerContentScrollView {...props} contentContainerStyle={{ flex: 1 }}>
-      <View style={styles.drawerHeader}>
-        <Image
-          source={require("@/assets/images/log.jpeg")}
-          style={styles.drawerImage}
-        />
-        <Text style={styles.drawerTitle}>CRM App</Text>
-      </View>
-      <ScrollView
-        style={styles.drawerBody}
-        showsVerticalScrollIndicator={false}
-      >
-        {[
-          { label: "Dashboard", icon: "home", route: "/(pages)/home" },
-          {
-            label: "New Leads",
-            icon: "view-dashboard-outline",
-            route: "/(components)/newLeads",
-          },
-          {
-            label: "Create New Leads",
-            icon: "file-document-outline",
-            route: "/(pages)/newLeads",
-          },
-          {
-            label: "Qualification",
-            icon: "account-check-outline",
-            route: "/(components)/qualification",
-          },
-          {
-            label: "Add Quotation",
-            icon: "file-plus-outline",
-            route: "/(components)/quatation",
-          },
-          {
-            label: "Quat. Send",
-            icon: "send-check-outline",
-            route: "/(components)/quatation",
-          },
-          {
-            label: "On Hold",
-            icon: "layers-outline",
-            route: "/(components)/hold",
-          },
-          {
-            label: "Won Lead",
-            icon: "clipboard-check-outline",
-            route: "/(components)/wonLead",
-          },
-          {
-            label: "Lost Lead",
-            icon: "clipboard-remove-outline",
-            route: "/(components)/lostLead",
-          },
-          {
-            label: "Add Attachment",
-            icon: "paperclip",
-            route: "/(components)/attachment",
-          },
-          {
-            label: "Follow Up",
-            icon: "file-find-outline",
-            route: "/(components)/followUp",
-          },
-          {
-            label: "Pending Follow Up",
-            icon: "account-clock-outline",
-            route: "/(components)/pendingFollow",
-          },
-          {
-            label: "Reminder",
-            icon: "bell-outline",
-            route: "/(components)/reminder",
-          },
-          {
-            label: "Generate Enquiry Form",
-            icon: "file-document-edit-outline",
-            route: "/(components)/reminder",
-          },
-          {
-            label: "Add Bill",
-            icon: "receipt",
-            route: "/(components)/addCustomer",
-          },
-          {
-            label: "Add Payment",
-            icon: "credit-card-outline",
-            route: "/(components)/addPayment",
-          },
-        ].map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            onPress={() => router.push(item.route as any)}
-            style={{ flexDirection: "row", alignItems: "center", padding: 15 }}
-          >
-            <Icon
-              name={item.icon}
-              size={20}
-              color="#2D4491"
-              style={{ marginRight: 10 }}
-            />
-            <Text style={{ color: "#2D4491", fontSize: 14 }}>{item.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </DrawerContentScrollView>
-  );
+type RootDrawerParamList = {
+  Dashboard: undefined;
 };
-
 const Dashboard = ({ navigation }: any) => {
+  const navigationn =
+    useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
   return (
     <View style={{ flex: 1, backgroundColor: "#f3f5fb" }}>
       <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.openDrawer()}>
+        <TouchableOpacity onPress={() => navigationn.openDrawer()}>
           <Icon name="menu" size={28} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Trinity CRM</Text>
@@ -176,19 +71,48 @@ const Dashboard = ({ navigation }: any) => {
             route: "/(components)/reminder",
           },
           {
+            label: "Customer Profile",
+            count: 18,
+            icon: "account",
+            color: "#800080",
+            route: "/(components)/customerProfile",
+          },
+          {
+            label: "Client Document",
+            count: 18,
+            icon: "clipboard-check-outline",
+            color: "#800080",
+            route: "/(components)/clientDocuments",
+          },
+          {
+            label: "Quatation",
+            count: 13,
+            icon: "send-check-outline",
+            color: "#FF4500",
+            route: "/(components)/quatation",
+          },
+          {
+            label: "Invoice",
+            count: 13,
+            icon: "send-check-outline",
+            color: "#FF4500",
+            route: "/(components)/invoiceList",
+          },
+          {
+            label: "Task Management",
+            count: 18,
+            icon: "clipboard-check-outline",
+            color: "#800080",
+            route: "/(components)/taskList",
+          },
+          {
             label: "Qualification",
             count: 18,
             icon: "account-check-outline",
             color: "#800080",
             route: "/(components)/qualification",
           },
-          {
-            label: "Quat. Send",
-            count: 13,
-            icon: "send-check-outline",
-            color: "#FF4500",
-            route: "/(components)/quatation",
-          },
+
           {
             label: "On Hold",
             count: 19,
@@ -246,19 +170,7 @@ const Dashboard = ({ navigation }: any) => {
   );
 };
 
-export default function DashboardScreen() {
-  return (
-    <Drawer.Navigator
-      drawerContent={(props: any) => <DrawerContent {...props} />}
-    >
-      <Drawer.Screen
-        name="Dashboard"
-        component={Dashboard}
-        options={{ headerShown: false }}
-      />
-    </Drawer.Navigator>
-  );
-}
+export default withDrawer(Dashboard, "Dashboard");
 
 const styles = StyleSheet.create({
   drawerHeader: {
