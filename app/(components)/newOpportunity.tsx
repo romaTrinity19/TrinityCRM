@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { router, useNavigation } from "expo-router";
 import React, { useState } from "react";
 import {
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -17,6 +18,7 @@ import {
 } from "react-native";
 import { withDrawer } from "../(components)/drawer";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type RootDrawerParamList = {
   Dashboard: undefined;
@@ -69,7 +71,13 @@ const CreateNewLeadForm = () => {
   };
 
   return (
-    <View style={styles.container}>
+
+   <SafeAreaView style={{ flex: 1, backgroundColor: "#f2f6ff" }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        > 
+   
       <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => router.back()}>
@@ -283,17 +291,16 @@ const CreateNewLeadForm = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </View>
+   
+    </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 export default withDrawer(CreateNewLeadForm, "CreateNewLeadForm");
 
 const styles = StyleSheet.create({
-  container: {
-    paddingVertical: 25,
-    backgroundColor: "#f7f9fc",
-  },
+  
   header: {
     paddingVertical: 16,
     paddingHorizontal: 12,

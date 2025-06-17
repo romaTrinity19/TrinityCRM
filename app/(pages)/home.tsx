@@ -1,6 +1,5 @@
 import {
-  createDrawerNavigator,
-  DrawerContentScrollView,
+  
   DrawerNavigationProp,
 } from "@react-navigation/drawer";
 import { LinearGradient } from "expo-linear-gradient";
@@ -18,6 +17,7 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import CustomerInteractionStats from "../(components)/dashboardCard";
 import { withDrawer } from "../(components)/drawer";
 import { useNavigation } from "@react-navigation/native";
+ 
 
 type RootDrawerParamList = {
   Dashboard: undefined;
@@ -75,7 +75,7 @@ const Dashboard = ({ navigation }: any) => {
             count: 18,
             icon: "account",
             color: "#800080",
-            route: "/(components)/customerProfile",
+            route: "/(components)/customerProfileList",
           },
           {
             label: "Client Document",
@@ -105,49 +105,49 @@ const Dashboard = ({ navigation }: any) => {
             color: "#800080",
             route: "/(components)/taskList",
           },
-          {
-            label: "Qualification",
-            count: 18,
-            icon: "account-check-outline",
-            color: "#800080",
-            route: "/(components)/qualification",
-          },
+          // {
+          //   label: "Qualification",
+          //   count: 18,
+          //   icon: "account-check-outline",
+          //   color: "#800080",
+          //   route: "/(components)/qualification",
+          // },
 
-          {
-            label: "On Hold",
-            count: 19,
-            icon: "layers-outline",
-            color: "#008B8B",
-            route: "/(components)/hold",
-          },
-          {
-            label: "Won Lead",
-            count: 23,
-            icon: "clipboard-check-outline",
-            color: "#00695c",
-            route: "/(components)/wonLead",
-          },
-          {
-            label: "Add Attachments",
-            count: 4,
-            icon: "paperclip",
-            color: "#2D4491",
-            route: "/(components)/attachment",
-          },
-          {
-            label: "Lost Lead",
-            count: 26,
-            icon: "clipboard-remove-outline",
-            color: "#dc143c",
-            route: "/(components)/lostLead",
-          },
-          {
-            label: "Pending Follow",
-            count: 9,
-            icon: "account-clock-outline",
-            color: "#f4a300",
-            route: "/(components)/pendingFollow",
-          },
+          // {
+          //   label: "On Hold",
+          //   count: 19,
+          //   icon: "layers-outline",
+          //   color: "#008B8B",
+          //   route: "/(components)/hold",
+          // },
+          // {
+          //   label: "Won Lead",
+          //   count: 23,
+          //   icon: "clipboard-check-outline",
+          //   color: "#00695c",
+          //   route: "/(components)/wonLead",
+          // },
+          // {
+          //   label: "Add Attachments",
+          //   count: 4,
+          //   icon: "paperclip",
+          //   color: "#2D4491",
+          //   route: "/(components)/attachment",
+          // },
+          // {
+          //   label: "Lost Lead",
+          //   count: 26,
+          //   icon: "clipboard-remove-outline",
+          //   color: "#dc143c",
+          //   route: "/(components)/lostLead",
+          // },
+          // {
+          //   label: "Pending Follow",
+          //   count: 9,
+          //   icon: "account-clock-outline",
+          //   color: "#f4a300",
+          //   route: "/(components)/pendingFollow",
+          // },
         ].map((item: any, index) => (
           <TouchableOpacity
             key={index}
