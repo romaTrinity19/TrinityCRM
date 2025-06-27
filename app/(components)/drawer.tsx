@@ -12,7 +12,7 @@ const Drawer = createDrawerNavigator();
 
 const DrawerContent = (props: any) => {
   return (
-    <DrawerContentScrollView {...props} contentContainerStyle={{ flex: 1 }}>
+    <DrawerContentScrollView {...props} contentContainerStyle={{ flex: 1, marginBottom:50}}>
       <View style={styles.drawerHeader}>
         <Image
           source={require("@/assets/images/log.jpeg")}
@@ -116,11 +116,18 @@ const DrawerContent = (props: any) => {
             icon: "receipt",
             route: "/(components)/addCustomer",
           },
+          
           {
             label: "Add Payment",
             icon: "briefcase-outline",
             route: "/(components)/addPayment",
           },
+           {
+            label: "Logout",
+            icon: "logout",
+            route: "/(auth)/login",
+          },
+             
         ].map((item, index) => (
           <DrawerItem
             key={index}

@@ -3,9 +3,11 @@ import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
+  Linking,
   Modal,
   Pressable,
   StyleSheet,
@@ -18,42 +20,32 @@ import { withDrawer } from "../(components)/drawer";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Platform } from "react-native";
+import axios from "axios";
+import { Alert } from "react-native";
 
-const leads = [
-  {
-    id: "1",
-    name: "#00418 - Kush Bhaiya",
-    service: "Stock Management App",
-    phone: "9131563996, 9131563996",
-    amount: "₹10,000",
-    date: "14th May 2025",
-  },
-  {
-    id: "2",
-    name: "#00418 - Ravish Talreja",
-    service: "Social Media and digital",
-    phone: "9981515000, 9981515000",
-    date: "14th May 2025",
-  },
-  {
-    id: "3",
-    name: "#00418 - Amit Ji Jain Traders",
-    service: "Lable prinintg software",
-    phone: "9827138487, 9827138487",
-    date: "14th May 2025",
-  },
-  {
-    id: "4",
-    name: "#00418 - Manoj Borker",
-    service: "Website",
-    phone: "",
-    date: "",
-  },
-];
 type RootDrawerParamList = {
   Dashboard: undefined;
   Qualification: undefined;
   NewLeads: undefined;
+};
+
+type Lead = {
+  cust_no: string;
+  name: string; // Maps to leadName
+  email_id: string;
+  contact_no: string;
+  whatsapp_no: string;
+  walkin_date: string; // Maps to leadDate
+  lead_source_id: string; // Maps to leadSource
+  agent_id: string; // Maps to leadAgent
+
+  state_id: string;
+  estimate_amt: string; // Maps to amount
+  address: string; // Maps to notes
+  type: string; // Will be "lead"
+  lead_status: string;
+  lead_owner: string;
+  lead_id: string;
 };
 
 function NewLeadsScreen() {
@@ -71,6 +63,10 @@ function NewLeadsScreen() {
   const [toDate, setToDate] = useState(new Date());
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
+  const [leadss, setLeadss] = useState<Lead[]>([]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const agents = ["--- select ---", "Agent A", "Agent B", "Agent C"];
   const users = ["--- select ---", "User X", "User Y", "User Z"];
@@ -82,14 +78,14 @@ function NewLeadsScreen() {
   ];
 
   // Filter leads based on search query (case-insensitive)
-  const filteredLeads = leads.filter((lead) =>
+  const filteredLeads = leadss?.filter((lead: any) =>
     lead.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [createCustomerModalVisible, setCreateCustomerModalVisible] =
     useState(false);
-    
+
   const menuItems = [
     { label: "View", route: "/(pages)/newLeads", emoji: "👁️" },
     { label: "Transfer", route: "/(pages)/newLeads", emoji: "🔄" },
@@ -108,10 +104,35 @@ function NewLeadsScreen() {
     { label: "Delete", route: "/(pages)/message", emoji: "🗑️" },
   ];
 
-  const renderMenu = (item: any) => (
+  const deleteLead = async (id: string) => {
+  try {
+    const response = await axios.delete(
+      "http://crmclient.trinitysoftwares.in/crmAppApi/leads.php?type=deleteLead",
+      {
+        data: { id },
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (response.data.status === "success") {
+      Alert.alert("✅ Lead deleted successfully");
+      fetchLeads(); // refresh the leads list
+    } else {
+      Alert.alert("❌ Failed to delete lead", response.data.message || "Unknown error");
+    }
+  } catch (error) {
+    console.error("❌ Error deleting lead:", error);
+    Alert.alert("❌ Error occurred while deleting lead");
+  }
+};
+
+
+  const renderMenu = (item: Lead) => (
     <Modal
       transparent={true}
-      visible={selectedItem === item.id && menuVisible}
+      visible={selectedItem === item.lead_id && menuVisible}
       animationType="fade"
       onRequestClose={() => setMenuVisible(false)}
     >
@@ -120,18 +141,101 @@ function NewLeadsScreen() {
         onPress={() => setMenuVisible(false)}
       >
         <View style={styles.menuContainer2}>
-          {menuItems.map((menuItem) => (
+          {[
+            {
+              label: "View",
+              emoji: "👁️",
+              onPress: () => router.push("/(pages)/newLeads"),
+            },
+            {
+              label: "Transfer",
+              emoji: "🔄",
+              onPress: () => router.push("/(pages)/newLeads"),
+            },
+            {
+              label: "Create Customer",
+              emoji: "🧑‍💼",
+              onPress: () => setCreateCustomerModalVisible(true),
+            },
+            {
+              label: "Edit",
+              emoji: "✏️",
+              onPress: () => router.push("/(pages)/newLeads"),
+            },
+            {
+              label: "WhatsApp Chat",
+              emoji: "💬",
+              onPress: () => {
+                const phone = item.whatsapp_no;
+                const url = `https://wa.me/${phone}`;
+
+                Linking.canOpenURL(url)
+                  .then((supported) => {
+                    if (supported) {
+                      Linking.openURL(url);
+                    } else {
+                      Alert.alert("WhatsApp not installed");
+                    }
+                  })
+                  .catch((err) =>
+                    console.error("Error opening WhatsApp:", err)
+                  );
+              },
+            },
+            {
+              label: "Call",
+              emoji: "📞",
+              onPress: () => {
+                const phone = item.contact_no;
+                const telURL = `tel:${phone}`;
+                Linking.openURL(telURL); // open phone dialer
+              },
+            },
+           {
+  label: "Delete",
+  emoji: "🗑️",
+ onPress: () => {
+  Alert.alert(
+    "Confirm Delete",
+    "Are you sure you want to delete this lead?",
+    [
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+       onPress: () => {
+  Alert.alert(
+    "Confirm Delete",
+    "Are you sure you want to delete this lead?",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => deleteLead(item.lead_id), // call the delete function
+      },
+    ]
+  );
+}
+
+      },
+    ]
+  );
+}
+
+}
+,
+          ].map((menuItem) => (
             <TouchableOpacity
               key={menuItem.label}
               style={styles.menuItem2}
               activeOpacity={0.7}
               onPress={() => {
                 setMenuVisible(false);
-                if (menuItem.modal === "createCustomer") {
-                  setCreateCustomerModalVisible(true);
-                } else if (menuItem.route) {
-                  router.push(menuItem.route as any);
-                }
+                menuItem.onPress();
               }}
             >
               <View style={styles.menuItemRow2}>
@@ -180,13 +284,45 @@ function NewLeadsScreen() {
       </View>
     </Modal>
   );
-  
-const formatDate = (date: Date) => {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-  return `${day}/${month}/${year}`;
-};
+
+  const formatDate = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  useEffect(() => {
+    fetchLeads();
+  }, []);
+
+  const fetchLeads = async () => {
+    try {
+      const response = await axios.get(
+        "http://crmclient.trinitysoftwares.in/crmAppApi/leads.php?type=getAllLeads&loginid=1"
+      );
+ 
+      if (response.data.status === "success") {
+        const leads = response.data.leads;
+        setLeadss(leads);
+      } else {
+        setError("Failed to load leads");
+      }
+    } catch (err) {
+      console.error("❌ Error fetching leads:", err);
+      setError("Error fetching leads");
+    } finally {
+      setLoading(false);
+    }
+  };
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#5975D9" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
@@ -295,9 +431,7 @@ const formatDate = (date: Date) => {
               onPress={() => setShowFromPicker(true)}
               style={styles.dateField}
             >
-              <Text style={styles.dateValue}>
-               {formatDate(fromDate)}
-              </Text>
+              <Text style={styles.dateValue}>{formatDate(fromDate)}</Text>
             </TouchableOpacity>
             <Text style={styles.dateLabel}>To Date</Text>
             {/* To Date Picker */}
@@ -305,10 +439,7 @@ const formatDate = (date: Date) => {
               onPress={() => setShowToPicker(true)}
               style={styles.dateField}
             >
-              <Text style={styles.dateValue}>
-              {formatDate(toDate)}
-                
-              </Text>
+              <Text style={styles.dateValue}>{formatDate(toDate)}</Text>
             </TouchableOpacity>
             {showFromPicker && (
               <DateTimePicker
@@ -362,15 +493,15 @@ const formatDate = (date: Date) => {
 
       <FlatList
         data={filteredLeads}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.lead_id}
         renderItem={({ item, index }) => (
           <Card style={styles.card} mode="outlined">
             <Card.Title
-              title={`${index + 1}. ${item.name}`}
+              title={`${index + 1}. 000${item.cust_no} ${item.name}`}
               right={() => (
                 <TouchableOpacity
                   onPress={() => {
-                    setSelectedItem(item.id);
+                    setSelectedItem(item.lead_id);
                     setMenuVisible(true);
                   }}
                 >
@@ -387,38 +518,42 @@ const formatDate = (date: Date) => {
                   size={18}
                   iconColor="#4b3ba9"
                 />
-                <Text>{item.service}</Text>
+                <Text>{item.email_id}</Text>
               </View>
-              {item.phone ? (
+              {item.contact_no ? (
                 <View style={styles.row}>
                   <IconButton
                     icon="phone-outline"
                     size={18}
                     iconColor="#4b3ba9"
                   />
-                  <Text>{item.phone}</Text>
+                  <Text>{item.contact_no}</Text>
                 </View>
               ) : null}
-              {item.amount ? (
+              {item.estimate_amt ? (
                 <View style={styles.row}>
                   <IconButton
                     icon="wallet-outline"
                     size={18}
                     iconColor="#4b3ba9"
                   />
-                  <Text>{item.amount}</Text>
+                  <Text>{item.estimate_amt}</Text>
                 </View>
               ) : null}
-              {item.date ? (
+              {item.walkin_date ? (
                 <View style={styles.row}>
                   <IconButton icon="calendar" size={18} iconColor="#4b3ba9" />
-                  <Text>{item.date}</Text>
+                  <Text>{item.walkin_date}</Text>
                 </View>
               ) : null}
             </Card.Content>
-            {renderMenu(item)}
+            {selectedItem === item.lead_id && menuVisible && renderMenu(item)}
           </Card>
         )}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
       />
       <CreateCustomer />
       <Button
