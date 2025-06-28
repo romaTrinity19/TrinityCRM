@@ -15,6 +15,8 @@ import {
   TouchableOpacity,
 } from "react-native";
 import Toast from "react-native-toast-message";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 
 // 🔹 Register Form Component
 const RegisterForm = ({ switchToLogin }: { switchToLogin: () => void }) => {
@@ -159,12 +161,13 @@ const LoginForm = ({ switchToRegister, switchToForgot }: LoginFormProps) => {
           password,
         }),
       });
-
       const result = await response.json();
-
-      
-
       if (result.success) {
+
+           const userId = result.data.id;
+
+      // ✅ Save user ID to AsyncStorage
+      await AsyncStorage.setItem("userId", userId);
         Toast.show({
           type: "success",
           text1: "Login Successful",

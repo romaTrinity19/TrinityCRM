@@ -105,29 +105,31 @@ function NewLeadsScreen() {
   ];
 
   const deleteLead = async (id: string) => {
-  try {
-    const response = await axios.delete(
-      "http://crmclient.trinitysoftwares.in/crmAppApi/leads.php?type=deleteLead",
-      {
-        data: { id },
-        headers: {
-          "Content-Type": "application/json",
-        },
+    try {
+      const response = await axios.delete(
+        "http://crmclient.trinitysoftwares.in/crmAppApi/leads.php?type=deleteLead",
+        {
+          data: { id },
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.status === "success") {
+        Alert.alert("✅ Lead deleted successfully");
+        fetchLeads(); // refresh the leads list
+      } else {
+        Alert.alert(
+          "❌ Failed to delete lead",
+          response.data.message || "Unknown error"
+        );
       }
-    );
-
-    if (response.data.status === "success") {
-      Alert.alert("✅ Lead deleted successfully");
-      fetchLeads(); // refresh the leads list
-    } else {
-      Alert.alert("❌ Failed to delete lead", response.data.message || "Unknown error");
+    } catch (error) {
+      console.error("❌ Error deleting lead:", error);
+      Alert.alert("❌ Error occurred while deleting lead");
     }
-  } catch (error) {
-    console.error("❌ Error deleting lead:", error);
-    Alert.alert("❌ Error occurred while deleting lead");
-  }
-};
-
+  };
 
   const renderMenu = (item: Lead) => (
     <Modal
@@ -145,7 +147,7 @@ function NewLeadsScreen() {
             {
               label: "View",
               emoji: "👁️",
-              onPress: () => router.push("/(pages)/newLeads"),
+               onPress: () => router.push({ pathname: "/(components)/leadDetails", params: { id: item.lead_id } }),
             },
             {
               label: "Transfer",
@@ -191,43 +193,40 @@ function NewLeadsScreen() {
                 Linking.openURL(telURL); // open phone dialer
               },
             },
-           {
-  label: "Delete",
-  emoji: "🗑️",
- onPress: () => {
-  Alert.alert(
-    "Confirm Delete",
-    "Are you sure you want to delete this lead?",
-    [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-      {
-        text: "Delete",
-        style: "destructive",
-       onPress: () => {
-  Alert.alert(
-    "Confirm Delete",
-    "Are you sure you want to delete this lead?",
-    [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: () => deleteLead(item.lead_id), // call the delete function
-      },
-    ]
-  );
-}
-
-      },
-    ]
-  );
-}
-
-}
-,
+            {
+              label: "Delete",
+              emoji: "🗑️",
+              onPress: () => {
+                Alert.alert(
+                  "Confirm Delete",
+                  "Are you sure you want to delete this lead?",
+                  [
+                    {
+                      text: "Cancel",
+                      style: "cancel",
+                    },
+                    {
+                      text: "Delete",
+                      style: "destructive",
+                      onPress: () => {
+                        Alert.alert(
+                          "Confirm Delete",
+                          "Are you sure you want to delete this lead?",
+                          [
+                            { text: "Cancel", style: "cancel" },
+                            {
+                              text: "Delete",
+                              style: "destructive",
+                              onPress: () => deleteLead(item.lead_id), // call the delete function
+                            },
+                          ]
+                        );
+                      },
+                    },
+                  ]
+                );
+              },
+            },
           ].map((menuItem) => (
             <TouchableOpacity
               key={menuItem.label}
@@ -301,7 +300,7 @@ function NewLeadsScreen() {
       const response = await axios.get(
         "http://crmclient.trinitysoftwares.in/crmAppApi/leads.php?type=getAllLeads&loginid=1"
       );
- 
+
       if (response.data.status === "success") {
         const leads = response.data.leads;
         setLeadss(leads);
@@ -497,7 +496,7 @@ function NewLeadsScreen() {
         renderItem={({ item, index }) => (
           <Card style={styles.card} mode="outlined">
             <Card.Title
-              title={`${index + 1}. 000${item.cust_no} ${item.name}`}
+              title={`${index + 1}. #000${item.cust_no} ${item.name}`}
               right={() => (
                 <TouchableOpacity
                   onPress={() => {
