@@ -1,7 +1,7 @@
 import {
-    createDrawerNavigator,
-    DrawerContentScrollView,
-    DrawerItem,
+  createDrawerNavigator,
+  DrawerContentScrollView,
+  DrawerItem,
 } from "@react-navigation/drawer";
 import { router } from "expo-router";
 import React from "react";
@@ -12,7 +12,7 @@ const Drawer = createDrawerNavigator();
 
 const DrawerContent = (props: any) => {
   return (
-    <DrawerContentScrollView {...props} contentContainerStyle={{ flex: 1 }}>
+    <DrawerContentScrollView {...props} contentContainerStyle={{ flex: 1, marginBottom:50}}>
       <View style={styles.drawerHeader}>
         <Image
           source={require("@/assets/images/log.jpeg")}
@@ -87,26 +87,56 @@ const DrawerContent = (props: any) => {
             route: "/(components)/reminder",
           },
           {
+            label: "Email Template Master",
+            icon: "bell-outline",
+            route: "/(components)/(compaign)/emailTempMaster",
+          },
+          {
+            label: "Bulk E-mail",
+            icon: "mail",
+            route: "/(components)/(compaign)/bulkEmail",
+          },
+          {
+            label: "Bulk WhatsApp",
+            icon: "mail",
+            route: "/(components)/(compaign)/bulkWhatsapp",
+          },
+          {
+            label: "WhatsApp Template Master",
+            icon: "whatsapp",
+            route: "/(components)/(compaign)/wtspTempMasterList",
+          },
+          {
             label: "Generate Enquiry Form",
             icon: "file-document-edit-outline",
-            route: "/(components)/reminder",
+            route: "/(components)/enquiryForm",
           },
           {
             label: "Add Bill",
-            icon:"receipt",
+            icon: "receipt",
             route: "/(components)/addCustomer",
           },
+          
           {
             label: "Add Payment",
             icon: "briefcase-outline",
             route: "/(components)/addPayment",
           },
+           {
+            label: "Logout",
+            icon: "logout",
+            route: "/(auth)/login",
+          },
+             
         ].map((item, index) => (
           <DrawerItem
             key={index}
             label={item.label}
             icon={() => <Icon name={item.icon} size={20} color={"#2D4491"} />}
-            onPress={() => router.push(item.route as any)}
+            onPress={() => {
+              props.navigation.closeDrawer();
+              router.push(item.route as any);
+            }}
             labelStyle={{ color: "#2D4491", fontSize: 14 }}
           />
         ))}
@@ -158,4 +188,3 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
   },
 });
- 
