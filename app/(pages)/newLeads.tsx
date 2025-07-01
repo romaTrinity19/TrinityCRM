@@ -27,8 +27,11 @@ import {
 } from "@/components/utils/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
+import { useLocalSearchParams } from "expo-router";
 
 const CreateNewLeadForm = () => {
+  const { type, id } = useLocalSearchParams();
+
   const [formData, setFormData] = useState({
     opportunity: "",
     leadName: "",
@@ -97,79 +100,140 @@ const CreateNewLeadForm = () => {
 
     fetchUserIdAndDetails();
   }, []);
- 
 
   const handleSaveLead = async () => {
     if (!user || !user.userid) {
       alert("User not loaded");
       return;
     }
-setLoading(true); 
-    const url = `https://crmclient.trinitysoftwares.in/crmAppApi/leads.php?type=createLead&loginid=${user.userid}`;
+
+    setLoading(true);
+
+    const bodyData: any = {
+      leadName: formData.leadName,
+      email: formData.email,
+      contact: formData.contact,
+      whatsapp: formData.whatsapp,
+      leadDate: formData.leadDate.toISOString().split("T")[0],
+      leadSource: formData.leadSource,
+      leadAgent: formData.leadAgent,
+      product: formData.product,
+      state: formData.state,
+      amount: formData.amount,
+      sendWhatsApp: formData.sendWhatsApp ? "yes" : "no",
+      sendMail: formData.sendMail ? "yes" : "no",
+      notes: formData.notes,
+      opportunity: formData.opportunity,
+    };
 
     try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          leadName: formData.leadName,
-          email: formData.email,
-          contact: formData.contact,
-          whatsapp: formData.whatsapp,
-          leadDate: formData.leadDate.toISOString().split("T")[0], // format as YYYY-MM-DD
-          leadSource: formData.leadSource,
-          leadAgent: formData.leadAgent,
-          product: formData.product,
-          state: formData.state,
-          amount: formData.amount,
-          sendWhatsApp: formData.sendWhatsApp ? "yes" : "no",
-          sendMail: formData.sendMail ? "yes" : "no",
-          notes: formData.notes,
-        }),
-      });
+      let result;
 
-      const result = await response.json();
+      if (type === "update" && id) {
+        // PATCH for update
+        const patchBody = {
+          id,
+          name: formData.leadName,
+          contact_no: formData.contact,
+          email_id: formData.email,
+          estimate_amt: formData.amount,
+          whatsapp_no: formData.whatsapp,
+          walkin_date: bodyData.leadDate,
+          lead_source_id: formData.leadSource,
+          agent_id: formData.leadAgent,
+          state_id: formData.state,
+          address: formData.notes,
+          internal_notes: formData.notes,
+          opportunity: formData.opportunity,
+          prod_service_id: formData.product,
+        };
+
+        const response = await fetch(
+          `https://crmclient.trinitysoftwares.in/crmAppApi/leads.php?type=updateLead`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(patchBody),
+          }
+        );
+
+        result = await response.json();
+      } else {
+        const response = await fetch(
+          `https://crmclient.trinitysoftwares.in/crmAppApi/leads.php?type=createLead&loginid=${user.userid}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(bodyData),
+          }
+        );
+        result = await response.json();
+      }
 
       if (result.status === "success") {
         Toast.show({
           type: "success",
-          text1: "Lead created successfully",
+          text1:
+            type === "update"
+              ? "Lead updated successfully"
+              : "Lead created successfully",
         });
-        router.push('/(components)/newLeads')
-        setFormData({
-          opportunity: "",
-          leadName: "",
-          email: "",
-          contact: "",
-          whatsapp: "",
-          leadDate: new Date(),
-          leadSource: "",
-          leadAgent: "",
-          product: "",
-          state: "",
-          amount: "",
-          sendWhatsApp: false,
-          sendMail: false,
-          notes: "",
-        });
+        router.push("/(components)/newLeads");
       } else {
         Toast.show({
           type: "error",
-          text1: "Error: " + result.message,
+          text1: result.message || "Something went wrong",
         });
       }
     } catch (error) {
       Toast.show({
         type: "error",
-        text1: "Failed to save lead",
+        text1: "API Error",
       });
+    } finally {
+      setLoading(false);
     }
-    finally {
-    setLoading(false); // Stop loading
-  }
   };
+
+  useEffect(() => {
+    const fetchLead = async () => {
+      if (type === "update" && id) {
+        try {
+          const response = await fetch(
+            `https://crmclient.trinitysoftwares.in/crmAppApi/leads.php?type=getLeadById&id=${id}`
+          );
+          const result = await response.json();
+          if (result.status === "success" && result.lead) {
+            const lead = result.lead;
+            setFormData({
+              opportunity: lead.opportunity || "",
+              leadName: lead.name || "",
+              email: lead.email_id || "",
+              contact: lead.contact_no || "",
+              whatsapp: lead.whatsapp_no || "",
+              leadDate: new Date(lead.walkin_date || new Date()),
+              leadSource: lead.lead_source_id || "",
+              leadAgent: lead.agent_id || "",
+              product: lead.prod_service_id || "",
+              state: lead.state_id || "",
+              amount: lead.estimate_amt || "",
+              sendWhatsApp: false,
+              sendMail: false,
+              notes: lead.internal_notes || lead.address || "",
+            });
+          }
+        } catch (error) {
+          console.error("Failed to load lead:", error);
+        }
+      }
+    };
+
+    fetchLead();
+  }, [type, id]);
 
   useEffect(() => {
     const fetchDropdownData = async () => {
@@ -421,7 +485,9 @@ setLoading(true);
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>Save</Text>
+                <Text style={styles.buttonText}>
+                  {type === "update" ? "Update" : "Create"}
+                </Text>
               )}
             </TouchableOpacity>
           </View>

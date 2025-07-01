@@ -22,6 +22,14 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Platform } from "react-native";
 import axios from "axios";
 import { Alert } from "react-native";
+import Toast from "react-native-toast-message";
+import {
+  getAllUserDetails,
+  getLeadAgents,
+  getStateDetails,
+  getUserDetails,
+} from "@/components/utils/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type RootDrawerParamList = {
   Dashboard: undefined;
@@ -67,15 +75,7 @@ function NewLeadsScreen() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const agents = ["--- select ---", "Agent A", "Agent B", "Agent C"];
-  const users = ["--- select ---", "User X", "User Y", "User Z"];
-  const states = [
-    "--- select ---",
-    "Madhya Pradesh",
-    "Maharashtra",
-    "Rajasthan",
-  ];
+  const [user, setUser] = useState<any>(null);
 
   // Filter leads based on search query (case-insensitive)
   const filteredLeads = leadss?.filter((lead: any) =>
@@ -85,24 +85,8 @@ function NewLeadsScreen() {
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [createCustomerModalVisible, setCreateCustomerModalVisible] =
     useState(false);
-
-  const menuItems = [
-    { label: "View", route: "/(pages)/newLeads", emoji: "👁️" },
-    { label: "Transfer", route: "/(pages)/newLeads", emoji: "🔄" },
-    {
-      label: "Create Customer",
-      modal: "createCustomer",
-      emoji: "🧑‍💼",
-    },
-    { label: "Edit", route: "/(pages)/newLeads", emoji: "✏️" },
-    {
-      label: "WhatsApp Chat",
-      route: "/(pages)/message",
-      emoji: "💬",
-    },
-    { label: "Call", route: "CallScreen", emoji: "📞" },
-    { label: "Delete", route: "/(pages)/message", emoji: "🗑️" },
-  ];
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [leadToDelete, setLeadToDelete] = useState<null | string>(null);
 
   const deleteLead = async (id: string) => {
     try {
@@ -117,17 +101,25 @@ function NewLeadsScreen() {
       );
 
       if (response.data.status === "success") {
-        Alert.alert("✅ Lead deleted successfully");
-        fetchLeads(); // refresh the leads list
+        Toast.show({
+          type: "success",
+          text1: " Lead deleted successfully",
+        });
+
+        fetchLeads();
       } else {
-        Alert.alert(
-          "❌ Failed to delete lead",
-          response.data.message || "Unknown error"
-        );
+        Toast.show({
+          type: "error",
+          text1: response.data.message,
+          text2: "Failed to delete lead",
+        });
       }
     } catch (error) {
       console.error("❌ Error deleting lead:", error);
-      Alert.alert("❌ Error occurred while deleting lead");
+      Toast.show({
+        type: "error",
+        text1: " Error occurred while deleting lead",
+      });
     }
   };
 
@@ -147,7 +139,11 @@ function NewLeadsScreen() {
             {
               label: "View",
               emoji: "👁️",
-               onPress: () => router.push({ pathname: "/(components)/leadDetails", params: { id: item.lead_id } }),
+              onPress: () =>
+                router.push({
+                  pathname: "/(components)/leadDetails",
+                  params: { id: item.lead_id },
+                }),
             },
             {
               label: "Transfer",
@@ -162,7 +158,11 @@ function NewLeadsScreen() {
             {
               label: "Edit",
               emoji: "✏️",
-              onPress: () => router.push("/(pages)/newLeads"),
+              onPress: () =>
+                router.push({
+                  pathname: "/(pages)/newLeads",
+                  params: { type: "update", id: item.lead_id },
+                }),
             },
             {
               label: "WhatsApp Chat",
@@ -197,34 +197,8 @@ function NewLeadsScreen() {
               label: "Delete",
               emoji: "🗑️",
               onPress: () => {
-                Alert.alert(
-                  "Confirm Delete",
-                  "Are you sure you want to delete this lead?",
-                  [
-                    {
-                      text: "Cancel",
-                      style: "cancel",
-                    },
-                    {
-                      text: "Delete",
-                      style: "destructive",
-                      onPress: () => {
-                        Alert.alert(
-                          "Confirm Delete",
-                          "Are you sure you want to delete this lead?",
-                          [
-                            { text: "Cancel", style: "cancel" },
-                            {
-                              text: "Delete",
-                              style: "destructive",
-                              onPress: () => deleteLead(item.lead_id), // call the delete function
-                            },
-                          ]
-                        );
-                      },
-                    },
-                  ]
-                );
+                setLeadToDelete(item.lead_id);
+                setDeleteModalVisible(true);
               },
             },
           ].map((menuItem) => (
@@ -292,13 +266,39 @@ function NewLeadsScreen() {
   };
 
   useEffect(() => {
-    fetchLeads();
+    const fetchUserIdAndDetails = async () => {
+      try {
+        const id = await AsyncStorage.getItem("userId");
+        if (id) {
+          const result = await getUserDetails(id);
+          if (result.success) {
+            setUser(result.user);
+          } else {
+            setError(result.message);
+          }
+        } else {
+          setError("No user ID found in storage.");
+        }
+      } catch (err: any) {
+        setError("Failed to load user data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserIdAndDetails();
   }, []);
+
+  useEffect(() => {
+    if (user?.userid) {
+      fetchLeads();
+    }
+  }, [user]);
 
   const fetchLeads = async () => {
     try {
       const response = await axios.get(
-        "http://crmclient.trinitysoftwares.in/crmAppApi/leads.php?type=getAllLeads&loginid=1"
+        `http://crmclient.trinitysoftwares.in/crmAppApi/leads.php?type=getAllLeads&loginid=${user.userid}`
       );
 
       if (response.data.status === "success") {
@@ -314,6 +314,83 @@ function NewLeadsScreen() {
       setLoading(false);
     }
   };
+
+  const [states, setStates] = useState([]);
+  const [allUser, setAllUser] = useState([]);
+  const [agents, setAgents] = useState([]);
+
+  useEffect(() => {
+    const fetchDropdownData = async () => {
+      setLoading(true);
+
+      const [stateRes, agentRes, userRes] = await Promise.all([
+        getStateDetails(),
+        getLeadAgents(),
+        getAllUserDetails(),
+      ]);
+
+      if (stateRes.status === "success") {
+        setStates(stateRes.sateData);
+      } else {
+        console.warn("State error:", stateRes.message);
+      }
+
+      if (userRes.status === "success") {
+        setAllUser(userRes.users);
+      } else {
+        console.warn("State error:", stateRes.message);
+      }
+
+      if (agentRes.status === "success") {
+        setAgents(agentRes.leadAgent);
+      } else {
+        console.warn("Lead Agent error:", agentRes.message);
+      }
+
+      setLoading(false);
+    };
+
+    fetchDropdownData();
+  }, []);
+
+  const applyFilter = async () => {
+    try {
+      setLoading(true);
+
+      const url = `http://crmclient.trinitysoftwares.in/crmAppApi/leads.php?type=getFilteredLeads&${
+        filterData.agent ? `&agent_id=${filterData.agent}` : ""
+      }${filterData.user ? `&loginid=${filterData.user}` : ""}${
+        filterData.state ? `&state_id=${filterData.state}` : ""
+      }&from_date=${fromDate.toISOString().split("T")[0]}&to_date=${
+        toDate.toISOString().split("T")[0]
+      }`;
+
+      const response = await axios.get(url);
+
+      if (response.data.status === "success") {
+        setLeadss(response.data.leads);
+        setFilterModalVisible(false);
+      } else {
+        setError("Failed to filter leads");
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "No data found for selected filters",
+        });
+      }
+    } catch (error) {
+      console.error("❌ Error filtering leads:", error);
+      setError("Error filtering leads");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Something went wrong while applying filters",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -387,8 +464,13 @@ function NewLeadsScreen() {
                 }
                 style={{ padding: 0, margin: -5 }}
               >
-                {agents.map((a) => (
-                  <Picker.Item key={a} label={a || "Select Agent"} value={a} />
+                <Picker.Item label="-- Select State --" value="" />
+                {agents?.map((item: any) => (
+                  <Picker.Item
+                    key={item?.agent_id}
+                    label={item?.agent_name}
+                    value={item?.agent_id}
+                  />
                 ))}
               </Picker>
             </View>
@@ -403,8 +485,13 @@ function NewLeadsScreen() {
                 }
                 style={{ padding: 0, margin: -5 }}
               >
-                {users.map((u) => (
-                  <Picker.Item key={u} label={u || "Select User"} value={u} />
+                <Picker.Item label="-- Select State --" value="" />
+                {allUser?.map((item: any) => (
+                  <Picker.Item
+                    key={item?.userid}
+                    label={item?.username}
+                    value={item?.userid}
+                  />
                 ))}
               </Picker>
             </View>
@@ -419,8 +506,13 @@ function NewLeadsScreen() {
                 }
                 style={{ padding: 0, margin: -5 }}
               >
-                {states.map((s) => (
-                  <Picker.Item key={s} label={s || "Select State"} value={s} />
+                <Picker.Item label="-- Select State --" value="" />
+                {states?.map((item: any) => (
+                  <Picker.Item
+                    key={item?.state_id}
+                    label={item?.state_name}
+                    value={item?.state_id}
+                  />
                 ))}
               </Picker>
             </View>
@@ -471,7 +563,9 @@ function NewLeadsScreen() {
                 style={styles.searchBtn}
                 onPress={() => {
                   // TODO: Apply filter logic
+                  applyFilter();
                   setFilterModalVisible(false);
+              
                 }}
               >
                 Search
@@ -488,6 +582,47 @@ function NewLeadsScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      <Modal
+        transparent
+        visible={deleteModalVisible}
+        animationType="fade"
+        onRequestClose={() => setDeleteModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setDeleteModalVisible(false)}
+        >
+          <View style={styles.confirmModal}>
+            <Text style={styles.confirmTitle}>Confirm Deletion</Text>
+            <Text style={styles.confirmMsg}>
+              Are you sure you want to delete this lead?
+            </Text>
+
+            <View style={styles.confirmBtnContainer}>
+              <TouchableOpacity
+                style={[styles.confirmBtn, { backgroundColor: "#ccc" }]}
+                onPress={() => setDeleteModalVisible(false)}
+              >
+                <Text style={styles.confirmBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.confirmBtn, { backgroundColor: "#d9534f" }]}
+                onPress={() => {
+                  if (leadToDelete) {
+                    deleteLead(leadToDelete);
+                    setDeleteModalVisible(false);
+                    setLeadToDelete(null);
+                  }
+                }}
+              >
+                <Text style={styles.confirmBtnText}>Yes, Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Pressable>
       </Modal>
 
       <FlatList
@@ -560,7 +695,12 @@ function NewLeadsScreen() {
         mode="contained"
         style={styles.createButton}
         labelStyle={{ fontSize: 16 }}
-        onPress={() => router.push("/(pages)/newLeads")}
+        onPress={() =>
+          router.push({
+            pathname: "/(pages)/newLeads",
+            params: { type: "create" },
+          })
+        }
       >
         Create New Leads
       </Button>
@@ -809,5 +949,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     fontWeight: "500",
+  },
+
+  confirmModal: {
+    backgroundColor: "#fff",
+    marginHorizontal: 30,
+    borderRadius: 10,
+    padding: 20,
+    alignItems: "center",
+    elevation: 5,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  confirmMsg: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  confirmBtnContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  confirmBtn: {
+    flex: 1,
+    marginHorizontal: 5,
+    paddingVertical: 10,
+    borderRadius: 5,
+    alignItems: "center",
+  },
+  confirmBtnText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });

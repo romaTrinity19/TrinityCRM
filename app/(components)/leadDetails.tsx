@@ -23,9 +23,11 @@ import {
 import { StatusBadge } from "@/components/StatausBadge";
 import { ActionButton } from "@/components/ActionButton";
 import { InfoCard } from "@/components/InfoCard";
-import { useRouter } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import { useLocalSearchParams } from "expo-router";
 import axios from "axios";
+import { DrawerNavigationProp } from "@react-navigation/drawer";
+import { withDrawer } from "./drawer";
 
 // Sample lead data - replace with actual data from your API/state
 const leadData = {
@@ -50,17 +52,44 @@ const leadData = {
   sendMail: true,
 };
 
-export default function LeadDetailsScreen() {
+type Lead = {
+  cust_no: string;
+  name: string; // Maps to leadName
+  email_id: string;
+  contact_no: string;
+  whatsapp_no: string;
+  walkin_date: string; // Maps to leadDate
+  lead_source_id: string; // Maps to leadSource
+  agent_id: string; // Maps to leadAgent
+  opportunity: string;
+  state_id: string;
+  estimate_amt: string; // Maps to amount
+  address: string; // Maps to notes
+  type: string; // Will be "lead"
+  lead_status: string;
+  lead_owner: string;
+  lead_id: string;
+  agent_name: string;
+  lead_source_name: string;
+  state_name: string;
+  internal_notes: string;
+};
+type RootDrawerParamList = {
+  LeadDetailsScreen: undefined;
+};
+
+const LeadDetailsScreen = () => {
+  const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const [lead, setLead] = useState(null);
+  const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
 
-  console.log("lead id", id);
+
 
   const handleCall = () => {
     if (Platform.OS !== "web") {
-      Linking.openURL(`tel:${leadData.contact}`);
+      Linking.openURL(`tel:${lead?.contact_no}`);
     } else {
       Alert.alert(
         "Call Feature",
@@ -70,51 +99,19 @@ export default function LeadDetailsScreen() {
   };
 
   const handleEmail = () => {
-    Linking.openURL(`mailto:${leadData.email}`);
+    Linking.openURL(`mailto:${lead?.email_id}`);
   };
 
   const handleWhatsApp = () => {
-    const message = `Hi ${leadData.leadName}, regarding your inquiry about ${leadData.opportunity}`;
-    const url = `whatsapp://send?phone=${leadData.whatsapp}&text=${encodeURIComponent(message)}`;
+    const message = `Hi ${lead?.name}, regarding your inquiry about ${lead?.opportunity}`;
+    const url = `whatsapp://send?phone=${lead?.whatsapp_no}&text=${encodeURIComponent(message)}`;
     Linking.openURL(url).catch(() => {
       Alert.alert("WhatsApp Error", "WhatsApp is not installed on this device");
     });
   };
-
-  const handleShare = () => {
-    Alert.alert("Share Lead", "Share functionality will be implemented here");
-  };
-
+ 
   const handleEdit = () => {
-    router.push("/(pages)/newLeads");
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "active":
-        return "#10B981";
-      case "pending":
-        return "#F59E0B";
-      case "closed":
-        return "#EF4444";
-      case "converted":
-        return "#8B5CF6";
-      default:
-        return "#6B7280";
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority.toLowerCase()) {
-      case "high":
-        return "#EF4444";
-      case "medium":
-        return "#F59E0B";
-      case "low":
-        return "#10B981";
-      default:
-        return "#6B7280";
-    }
+    router.push({ pathname: "/(pages)/newLeads", params: { type: "update", id:id } });
   };
 
   useEffect(() => {
@@ -128,8 +125,9 @@ export default function LeadDetailsScreen() {
       const response = await axios.get(
         `http://crmclient.trinitysoftwares.in/crmAppApi/leads.php?type=getLeadById&id=${leadId}`
       );
-      if (response.data && response.data.length > 0) {
-        setLead(response.data[0]); // assuming it's an array
+
+      if (response.data) {
+        setLead(response.data.lead); // assuming it's an array
       } else {
         console.warn("No lead data found.");
       }
@@ -140,7 +138,7 @@ export default function LeadDetailsScreen() {
     }
   };
 
-  console.log("individual lead data ", lead);
+  
 
   if (loading) {
     return (
@@ -150,43 +148,22 @@ export default function LeadDetailsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <LinearGradient colors={["#5975D9", "#1F40B5"]}>
+      <LinearGradient
+        colors={["#5975D9", "#1F40B5"]}
+        style={{ paddingVertical: 16, paddingHorizontal: 12 }}
+      >
         <View style={styles.headerContent}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.headerButton}
-          >
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" color="#fff" size={24} />
           </TouchableOpacity>
 
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>Lead Details</Text>
-            <Text style={styles.headerSubtitle}>ID: {leadData.id}</Text>
-          </View>
+          <Text style={styles.headerTitle}>Lost Lead</Text>
 
-          <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
-            <Feather name="share-2" size={24} color="#fff" />
+          <TouchableOpacity onPress={() => navigation.openDrawer()}>
+            <Ionicons name="menu" color="#fff" size={24} />
           </TouchableOpacity>
         </View>
-
-        {/* <View style={styles.headerStats}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{leadData.amount}</Text>
-            <Text style={styles.statLabel}>Est. Value</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>15</Text>
-            <Text style={styles.statLabel}>Days Old</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>3</Text>
-            <Text style={styles.statLabel}>Follow-ups</Text>
-          </View>
-        </View> */}
       </LinearGradient>
-
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Contact Actions */}
         <View style={styles.actionsContainer}>
@@ -203,7 +180,7 @@ export default function LeadDetailsScreen() {
             onPress={handleEmail}
           />
           <ActionButton
-            icon={<Feather name="message-circle" size={20} color="#22C55E" />}
+            icon={<FontAwesome name="whatsapp" size={20} color="#22C55E" />}
             label="WhatsApp"
             color="#22C55E"
             onPress={handleWhatsApp}
@@ -223,26 +200,26 @@ export default function LeadDetailsScreen() {
           <InfoCard
             icon={<Feather name="target" size={20} color="#5975D9" />}
             title="Opportunity"
-            value={leadData.opportunity}
+            value={lead?.opportunity || ""}
           />
 
           <InfoCard
             icon={<Feather name="user" size={20} color="#5975D9" />}
             title="Lead Name"
-            value={leadData.leadName}
-            subtitle="Primary Contact"
+            value={lead?.name || ""}
+            subtitle={`ID : #000${lead?.cust_no}`}
           />
 
           <InfoCard
             icon={<Feather name="mail" size={20} color="#3B82F6" />}
             title="Email Address"
-            value={leadData.email}
+            value={lead?.email_id || ""}
           />
 
           <InfoCard
             icon={<Feather name="phone" size={20} color="#10B981" />}
             title="Contact Number"
-            value={leadData.contact}
+            value={lead?.contact_no || ""}
           />
 
           <InfoCard
@@ -254,7 +231,7 @@ export default function LeadDetailsScreen() {
               />
             }
             title="WhatsApp Number"
-            value={leadData.whatsapp}
+            value={lead?.whatsapp_no || ""}
           />
         </View>
 
@@ -265,36 +242,40 @@ export default function LeadDetailsScreen() {
           <InfoCard
             icon={<Feather name="calendar" size={20} color="#5975D9" />}
             title="Lead Date"
-            value={new Date(leadData.leadDate).toLocaleDateString("en-US", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
+            value={
+              lead?.walkin_date
+                ? new Date(lead.walkin_date).toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })
+                : "Not Available"
+            }
           />
 
           <InfoCard
             icon={<FontAwesome5 name="building" size={20} color="#5975D9" />}
             title="Lead Source"
-            value={leadData.leadSource}
+            value={lead?.lead_source_name || ""}
           />
 
           <InfoCard
             icon={<Feather name="user" size={20} color="#5975D9" />}
             title="Assigned Agent"
-            value={leadData.leadAgent}
+            value={lead?.agent_name || ""}
           />
 
           <InfoCard
             icon={<Feather name="map-pin" size={20} color="#5975D9" />}
             title="State"
-            value={leadData.state}
+            value={lead?.state_name || ""}
           />
 
           <InfoCard
             icon={<Feather name="dollar-sign" size={20} color="#5975D9" />}
             title="Estimate Amount"
-            value={leadData.amount}
+            value={lead?.estimate_amt || ""}
             subtitle="Expected project value"
           />
         </View>
@@ -366,7 +347,7 @@ export default function LeadDetailsScreen() {
           <View style={styles.notesContainer}>
             <Feather name="file-text" size={20} color="#6B7280" />
             {/* <FileText size={20} color="#6B7280" /> */}
-            <Text style={styles.notesText}>{leadData.notes}</Text>
+            <Text style={styles.notesText}>{lead?.internal_notes}</Text>
           </View>
         </View>
 
@@ -375,7 +356,8 @@ export default function LeadDetailsScreen() {
       </ScrollView>
     </SafeAreaView>
   );
-}
+};
+export default withDrawer(LeadDetailsScreen, "LeadDetailsScreen");
 
 const styles = StyleSheet.create({
   container: {
@@ -387,9 +369,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 20,
   },
   headerButton: {
     padding: 8,
@@ -401,7 +380,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: "#fff",
     fontSize: 20,
-    fontWeight: "700",
+    textAlign: "center",
+    flex: 1,
+    marginHorizontal: 12,
   },
   headerSubtitle: {
     color: "rgba(255, 255, 255, 0.8)",

@@ -1,11 +1,18 @@
+import { getUserDetails } from "@/components/utils/api";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Picker } from "@react-native-picker/picker";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { useNavigation } from "@react-navigation/native";
+import axios from "axios";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   FlatList,
+  Linking,
   Modal,
   Pressable,
   StyleSheet,
@@ -14,50 +21,37 @@ import {
   View,
 } from "react-native";
 import { Button, Card, IconButton, Text } from "react-native-paper";
+import Toast from "react-native-toast-message";
 import { withDrawer } from "../(components)/drawer";
-import { Picker } from "@react-native-picker/picker";
 
-const leads = [
-  {
-    id: "1",
-    name: "#00418 - Kush Bhaiya",
-    service: "Stock Management App",
-    phone: "9131563996, 9131563996",
-    amount: "₹10,000",
-    date: "14th May 2025",
-  },
-  {
-    id: "2",
-    name: "#00418 - Ravish Talreja",
-    service: "Social Media and digital",
-    phone: "9981515000, 9981515000",
-    date: "14th May 2025",
-  },
-  {
-    id: "3",
-    name: "#00418 - Amit Ji Jain Traders",
-    service: "Lable prinintg software",
-    phone: "9827138487, 9827138487",
-    date: "14th May 2025",
-  },
-  {
-    id: "4",
-    name: "#00418 - Manoj Borker",
-    service: "Website",
-    phone: "",
-    date: "",
-  },
-];
 type RootDrawerParamList = {
   Dashboard: undefined;
   Qualification: undefined;
   NewLeads: undefined;
 };
 
+interface Opportunity {
+  opp_create_id: string;
+  opportunity_name: string;
+  name: string;
+  contact: string;
+  whatsapp_no: string;
+  estimated_amount: string;
+  expected_date: string;
+  prod_service_names: string[];
+  notes?: string;
+  opp_status?: string;
+}
+
 function NewLeadsScreen() {
   const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [error, setError] = useState("");
+  const [user, setUser] = useState<any>(null);
 
   const [createCustomerModalVisible, setCreateCustomerModalVisible] =
     useState(false);
@@ -72,52 +66,55 @@ function NewLeadsScreen() {
   const users = ["User", "User X", "User Y", "User Z"];
   const states = ["State", "Madhya Pradesh", "Maharashtra", "Rajasthan"];
 
-  // Filter leads based on search query (case-insensitive)
-  const filteredLeads = leads.filter((lead) =>
+  const filteredLeads = opportunities?.filter((lead: any) =>
     lead.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
-//   const menuItems = [
-//     { label: "View", route: "/(components)/opportunityUserDetails", icon: "eye-outline" },
-//     { label: "Transfer", route: "/(pages)/newLeads", icon: "swap-horizontal" },
-//     {
-//       label: "Create Customer",
-//       modal: "createCustomer",
-//       icon: "person-add-outline",
-//     },
-//     { label: "Edit", route: "/(pages)/newLeads", icon: "create-outline" },
-//     {
-//       label: "WhatsApp Chat",
-//       route: "/(pages)/message",
-//       icon: "logo-whatsapp",
-//     },
-//     { label: "Call", route: "CallScreen", icon: "call-outline" },
-//     { label: "Delete", route: "/(pages)/message", icon: "trash" },
-//   ];
 
- const menuItems = [
-    { label: "View", route: "/(components)/opportunityUserDetails", emoji: "👁️" },
-    { label: "Transfer", route: "/(pages)/newLeads", emoji: "🔄" },
-    {
-      label: "Create Customer",
-      modal: "createCustomer",
-      emoji: "🧑‍💼",
-    },
-    { label: "Edit", route: "/(pages)/newLeads", emoji: "✏️" },
-    {
-      label: "WhatsApp Chat",
-      route: "/(pages)/message",
-      emoji: "💬",
-    },
-    { label: "Call", route: "CallScreen", emoji: "📞" },
-    { label: "Delete", route: "/(pages)/message", emoji: "🗑️" },
-  ];
+  const [leadToDelete, setLeadToDelete] = useState<null | string>(null);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+
+  const deleteOportunity = async (id: string) => {
+    try {
+      const response = await axios.delete(
+        `http://crmclient.trinitysoftwares.in/crmAppApi/opportunity1.php?type=deleteOpportunity&id=${id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.status === "success") {
+        Toast.show({
+          type: "success",
+          text1: " Opportunity deleted successfully",
+        });
+
+        if (user?.userid) {
+          fetchOpportunities(user.userid);
+        }
+      } else {
+        Toast.show({
+          type: "error",
+          text1: response.data.message,
+          text2: "Failed to delete lead",
+        });
+      }
+    } catch (error) {
+      console.error("❌ Error deleting lead:", error);
+      Toast.show({
+        type: "error",
+        text1: " Error occurred while deleting lead",
+      });
+    }
+  };
 
   const renderMenu = (item: any) => (
     <Modal
       transparent={true}
-      visible={selectedItem === item.id && menuVisible}
+      visible={selectedItem === item.opp_create_id && menuVisible}
       animationType="fade"
       onRequestClose={() => setMenuVisible(false)}
     >
@@ -126,18 +123,80 @@ function NewLeadsScreen() {
         onPress={() => setMenuVisible(false)}
       >
         <View style={styles.menuContainer2}>
-          {menuItems.map((menuItem) => (
+          {[
+            {
+              label: "View",
+              emoji: "👁️",
+              onPress: () =>
+                router.push({
+                  pathname: "/(components)/opportunityUserDetails",
+                  params: { id: item.opp_create_id },
+                }),
+            },
+            {
+              label: "Transfer",
+              emoji: "🔄",
+              onPress: () => router.push("/(pages)/newLeads"),
+            },
+            {
+              label: "Create Customer",
+              emoji: "🧑‍💼",
+              onPress: () => setCreateCustomerModalVisible(true),
+            },
+            {
+              label: "Edit",
+              emoji: "✏️",
+              onPress: () =>
+                router.push({
+                  pathname: "/(components)/newOpportunity",
+                  params: { type: "update", id: item.opp_create_id },
+                }),
+            },
+            {
+              label: "WhatsApp Chat",
+              emoji: "💬",
+              onPress: () => {
+                const phone = item.whatsapp_no;
+                const url = `https://wa.me/${phone}`;
+
+                Linking.canOpenURL(url)
+                  .then((supported) => {
+                    if (supported) {
+                      Linking.openURL(url);
+                    } else {
+                      Alert.alert("WhatsApp not installed");
+                    }
+                  })
+                  .catch((err) =>
+                    console.error("Error opening WhatsApp:", err)
+                  );
+              },
+            },
+            {
+              label: "Call",
+              emoji: "📞",
+              onPress: () => {
+                const phone = item.contact_no;
+                const telURL = `tel:${phone}`;
+                Linking.openURL(telURL); // open phone dialer
+              },
+            },
+            {
+              label: "Delete",
+              emoji: "🗑️",
+              onPress: () => {
+                setLeadToDelete(item.opp_create_id);
+                setDeleteModalVisible(true);
+              },
+            },
+          ].map((menuItem) => (
             <TouchableOpacity
               key={menuItem.label}
               style={styles.menuItem2}
               activeOpacity={0.7}
               onPress={() => {
                 setMenuVisible(false);
-                if (menuItem.modal === "createCustomer") {
-                  setCreateCustomerModalVisible(true);
-                } else if (menuItem.route) {
-                  router.push(menuItem.route as any);
-                }
+                menuItem.onPress();
               }}
             >
               <View style={styles.menuItemRow2}>
@@ -170,7 +229,6 @@ function NewLeadsScreen() {
               style={[styles.alertButton, { backgroundColor: "#4b3ba9" }]}
               onPress={() => {
                 setCreateCustomerModalVisible(false);
-                // Action logic here...
               }}
             >
               <Text style={styles.alertButtonText}>Yes!</Text>
@@ -186,6 +244,64 @@ function NewLeadsScreen() {
       </View>
     </Modal>
   );
+
+  const fetchOpportunities = async (userId: string) => {
+    try {
+      const response = await fetch(
+        `http://crmclient.trinitysoftwares.in/crmAppApi/opportunity1.php?type=getAllOpportunity&loginid=${userId}`
+      );
+      const json = await response.json();
+
+      if (json.status === "success") {
+        setOpportunities(json.opportunities);
+      } else {
+        setError(json.message || "Error fetching opportunities.");
+      }
+    } catch (err) {
+      setError("Something went wrong while loading opportunities.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const fetchUserIdAndOpportunities = async () => {
+      try {
+        const id = await AsyncStorage.getItem("userId");
+
+        if (id) {
+          const result = await getUserDetails(id);
+          if (result.success) {
+            setUser(result.user);
+            if (result.user.userid) {
+              fetchOpportunities(result.user.userid); // 👈 Use extracted function
+            } else {
+              setError("User ID is missing in the user data.");
+            }
+          } else {
+            setError(result.message || "Failed to fetch user details.");
+          }
+        } else {
+          setError("No user ID found in storage.");
+        }
+      } catch (err) {
+        setError("Something went wrong while loading data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserIdAndOpportunities();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#5975D9" />
+      </View>
+    );
+  }
+  if (error) return <Text style={{ color: "red", padding: 10 }}>{error}</Text>;
 
   return (
     <View style={styles.container}>
@@ -312,18 +428,59 @@ function NewLeadsScreen() {
           </View>
         </View>
       </Modal>
+      <Modal
+        transparent
+        visible={deleteModalVisible}
+        animationType="fade"
+        onRequestClose={() => setDeleteModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setDeleteModalVisible(false)}
+        >
+          <View style={styles.confirmModal}>
+            <Text style={styles.confirmTitle}>Confirm Deletion</Text>
+            <Text style={styles.confirmMsg}>
+              Are you sure you want to delete this lead?
+            </Text>
+
+            <View style={styles.confirmBtnContainer}>
+              <TouchableOpacity
+                style={[styles.confirmBtn, { backgroundColor: "#ccc" }]}
+                onPress={() => setDeleteModalVisible(false)}
+              >
+                <Text style={styles.confirmBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.confirmBtn, { backgroundColor: "#d9534f" }]}
+                onPress={() => {
+                  if (leadToDelete) {
+           
+                    deleteOportunity(leadToDelete);
+                    setDeleteModalVisible(false);
+                    setLeadToDelete(null);
+                  }
+                }}
+              >
+                <Text style={styles.confirmBtnText}>Yes, Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
 
       <FlatList
         data={filteredLeads}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item?.opp_create_id}
         renderItem={({ item, index }) => (
           <Card style={styles.card} mode="outlined">
             <Card.Title
-              title={`${index + 1}. ${item.name}`}
+              title={`${index + 1}. #000${item.opp_create_id} ${item.name}`}
               right={() => (
                 <TouchableOpacity
                   onPress={() => {
-                    setSelectedItem(item.id);
+                    setSelectedItem(item.opp_create_id);
                     setMenuVisible(true);
                   }}
                 >
@@ -334,44 +491,57 @@ function NewLeadsScreen() {
             />
             <View style={styles.horizontalLine} />
             <Card.Content>
-              <View style={styles.row}>
-                <IconButton
-                  icon="bookmark-outline"
-                  size={18}
-                  iconColor="#4b3ba9"
-                />
-                <Text>{item.service}</Text>
-              </View>
-              {item.phone ? (
+              {item.prod_service_names && item.prod_service_names.length > 0 ? (
+                <View style={styles.row}>
+                  <IconButton
+                    icon="bookmark-outline"
+                    size={18}
+                    iconColor="#4b3ba9"
+                  />
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={{ flex: 1 }}
+                  >
+                    {item.prod_service_names.join(", ")}
+                  </Text>
+                </View>
+              ) : null}
+              {item.contact ? (
                 <View style={styles.row}>
                   <IconButton
                     icon="phone-outline"
                     size={18}
                     iconColor="#4b3ba9"
                   />
-                  <Text>{item.phone}</Text>
+                  <Text>{item.contact}</Text>
+                  <Text>, {item.whatsapp_no}</Text>
                 </View>
               ) : null}
-              {item.amount ? (
+              {item.estimated_amount ? (
                 <View style={styles.row}>
                   <IconButton
                     icon="wallet-outline"
                     size={18}
                     iconColor="#4b3ba9"
                   />
-                  <Text>{item.amount}</Text>
+                  <Text>{item.estimated_amount}</Text>
                 </View>
               ) : null}
-              {item.date ? (
+              {item.expected_date ? (
                 <View style={styles.row}>
                   <IconButton icon="calendar" size={18} iconColor="#4b3ba9" />
-                  <Text>{item.date}</Text>
+                  <Text>{item.expected_date}</Text>
                 </View>
               ) : null}
             </Card.Content>
             {renderMenu(item)}
           </Card>
         )}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
       />
       <CreateCustomer />
       <Button
@@ -379,7 +549,12 @@ function NewLeadsScreen() {
         mode="contained"
         style={styles.createButton}
         labelStyle={{ fontSize: 16 }}
-        onPress={() => router.push("/(components)/newOpportunity")}
+        onPress={() =>
+          router.push({
+            pathname: "/(components)/newOpportunity",
+            params: { type: "create" },
+          })
+        }
       >
         Create Opportunity
       </Button>
@@ -599,5 +774,39 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     fontWeight: "500",
+  },
+  confirmModal: {
+    backgroundColor: "#fff",
+    marginHorizontal: 30,
+    borderRadius: 10,
+    padding: 20,
+    alignItems: "center",
+    elevation: 5,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  confirmMsg: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  confirmBtnContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  confirmBtn: {
+    flex: 1,
+    marginHorizontal: 5,
+    paddingVertical: 10,
+    borderRadius: 5,
+    alignItems: "center",
+  },
+  confirmBtnText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });

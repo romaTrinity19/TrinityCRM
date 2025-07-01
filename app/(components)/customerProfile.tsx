@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -19,6 +19,10 @@ import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { useNavigation } from "@react-navigation/native";
 import { withDrawer } from "./drawer";
 import { SafeAreaView } from "react-native-safe-area-context";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getStateDetails, getUserDetails } from "@/components/utils/api";
+import Toast from "react-native-toast-message";
 
 const states = [
   "Select State",
@@ -37,12 +41,17 @@ const CustomerForm = () => {
   const [email, setEmail] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
   const [sameAsContact, setSameAsContact] = useState(false);
-  const [state, setState] = useState(states[0]);
+
   const [companyName, setCompanyName] = useState("");
   const [gstin, setGstin] = useState("");
   const [pan, setPan] = useState("");
   const [billingAddress, setBillingAddress] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [user, setUser] = useState<any>(null);
+  const [states, setStates] = useState([]);
+  const [selectedStateId, setSelectedStateId] = useState<string>("");
 
   const handleReset = () => {
     setCustomerName("");
@@ -50,7 +59,7 @@ const CustomerForm = () => {
     setEmail("");
     setWhatsappNumber("");
     setSameAsContact(false);
-    setState(states[0]);
+
     setCompanyName("");
     setGstin("");
     setPan("");
@@ -58,9 +67,116 @@ const CustomerForm = () => {
     setShippingAddress("");
   };
 
-  const handleSave = () => {
-    Alert.alert("Form Submitted", "Customer details saved successfully.");
+  const handleSave = async () => {
+    if (!customerName || !contactNumber) {
+      Toast.show({
+        type: "error",
+        text1: "Name and Contact Number are required.",
+      });
+
+      return;
+    }
+
+    if (!user?.userid) {
+      Toast.show({
+        type: "error",
+        text1: "User not loaded. Please try again.",
+      });
+
+      return;
+    }
+
+    const payload = {
+      name: customerName,
+      email: email,
+      contact: contactNumber,
+      whatsapp_no: whatsappNumber,
+      address: shippingAddress,
+      billing_address: billingAddress,
+      state_id: selectedStateId,
+      company_name: companyName,
+      gstin: gstin,
+      pan_no: pan,
+      send_msg: "0",
+      send_mail: "0",
+    };
+    setLoading(true);
+    try {
+      const response = await axios.post(
+        `http://crmclient.trinitysoftwares.in/crmAppApi/customerProfile.php?type=createCustomer&loginid=${user.userid}`,
+        payload,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.data.status === "success") {
+        Toast.show({
+          type: "success",
+          text1: "Customer created successfully",
+        });
+
+        handleReset();
+      } else {
+        Toast.show({
+          type: "error",
+          text1: response.data.message,
+          text2: "Failed to create customer",
+        });
+      }
+    } catch (error) {
+      console.error("API Error:", error);
+      Toast.show({
+        type: "error",
+        text1: "Something went wrong while creating customer.",
+      });
+
+      Alert.alert("Error", "Something went wrong while creating customer.");
+    } finally {
+      setLoading(false); 
+    }
   };
+
+  useEffect(() => {
+    const fetchUserIdAndDetails = async () => {
+      try {
+        const id = await AsyncStorage.getItem("userId");
+        if (id) {
+          const result = await getUserDetails(id);
+          if (result.success) {
+            setUser(result.user);
+          } else {
+            setError(result.message);
+          }
+        } else {
+          setError("No user ID found in storage.");
+        }
+      } catch (err: any) {
+        setError("Failed to load user data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserIdAndDetails();
+  }, []);
+  useEffect(() => {
+    const fetchStates = async () => {
+      const result = await getStateDetails();
+      if (result.status === "success") {
+        setStates(result.sateData);
+      } else {
+        Alert.alert("Error", result.message || "Failed to load states.");
+      }
+    };
+
+    fetchStates();
+  }, []);
+
+  console.log("state data", states);
+
   const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
 
   return (
@@ -152,12 +268,17 @@ const CustomerForm = () => {
             <Text style={styles.label}>State</Text>
             <View style={styles.pickerWrapper}>
               <Picker
-                selectedValue={state}
-                onValueChange={(itemValue) => setState(itemValue)}
+                selectedValue={selectedStateId}
+                onValueChange={(itemValue) => setSelectedStateId(itemValue)}
                 style={styles.picker}
               >
-                {states.map((s) => (
-                  <Picker.Item label={s} value={s} key={s} />
+                <Picker.Item label="-- Select State --" value="" />
+                {states?.map((item: any) => (
+                  <Picker.Item
+                    key={item?.state_id}
+                    label={item?.state_name}
+                    value={item?.state_id}
+                  />
                 ))}
               </Picker>
             </View>
