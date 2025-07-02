@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useNavigation } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -11,359 +12,314 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Platform,
 } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-
 import { withDrawer } from "./drawer";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getUserDetails } from "@/components/utils/api";
+import Toast from "react-native-toast-message";
 type RootDrawerParamList = {
   Dashboard: undefined;
-  Qualification: undefined;
-  FollowUpForm: undefined;
+  CreateReminderScreen: undefined;
+  Reminder: undefined;
 };
-function FollowUpForm() {
-  const [form, setForm] = useState({
-    lead: "Kush bhaiya",
-    followUpDate: "05/20/2025",
-    followUpTime: "",
-    type: "",
-    description: "",
-    nextFollowUpDate: "",
-    nextFollowUpTime: "",
-    status: "",
-  });
-
-  const handleChange = (name: any, value: any) => {
-    setForm({ ...form, [name]: value });
-  };
-
-  const handleReset = () => {
-    setForm({
-      lead: "Kush bhaiya",
-      followUpDate: "05/20/2025",
-      followUpTime: "",
-      type: "",
-      description: "",
-      nextFollowUpDate: "",
-      nextFollowUpTime: "",
-      status: "",
-    });
-  };
-  const [showDate, setShowDate] = useState(false);
-  const [showTime, setShowTime] = useState(false);
-
+const CreateReminderScreen = () => {
+  const [user, setUser] = useState<any>(null);
+  const [error, setError] = useState("");
+  const [opportunities, setOpportunities] = useState<any[]>([]);
+  const [lead, setLead] = useState("");
+  const [description, setDescription] = useState("");
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
+  const handleDateChange = (event: any, selectedDate: any) => {
+    const currentDate = selectedDate || date;
+    setShowDatePicker(false);
+    setDate(currentDate);
+  };
+
+  const handleTimeChange = (event: any, selectedTime: any) => {
+    const currentDate = selectedTime || date;
+    setShowTimePicker(false);
+    setDate(currentDate);
+  };
+
+  const formatDate = (d: any) => {
+    const mm = d.getMonth() + 1;
+    const dd = d.getDate();
+    return `${mm < 10 ? "0" + mm : mm}/${
+      dd < 10 ? "0" + dd : dd
+    }/${d.getFullYear()}`;
+  };
+
+  const formatTime = (d: any) => {
+    let hours = d.getHours();
+    const minutes = d.getMinutes();
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+    return `${hours}:${minutes < 10 ? "0" + minutes : minutes} ${ampm}`;
+  };
+
+  const formatDateForApi = (date: Date) => {
+    return date.toISOString().split("T")[0];
+  };
+
+  const formatTimeForApi = (date: Date) => {
+    return date.toTimeString().slice(0, 5);
+  };
+
+  const handleSave = async () => {
+    if (!lead || !date || !description || !user?.userid) {
+      Toast.show({
+        type: "error",
+        text1: "All fields are required",
+      });
+      return;
+    }
+
+    const payload = {
+      cust_id: lead,
+      followup_date: formatDateForApi(date),
+      followup_time: formatTimeForApi(date),
+      description: description.trim(),
+    };
+
+    try {
+      const response = await fetch(
+        `http://crmclient.trinitysoftwares.in/crmAppApi/followUp.php?type=createFollowUp&loginid=${user?.userid}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const result = await response.json();
+      if (result.status === "success") {
+        Toast.show({
+          type: "success",
+          text1: "Follow-up created successfully",
+        });
+        router.push("/(components)/followUpList");
+      } else {
+        Toast.show({
+          type: "error",
+          text1: result.message || "Failed to save follow-up",
+        });
+      }
+    } catch (error) {
+      console.error("API Error:", error);
+      Toast.show({
+        type: "error",
+        text1: "Something went wrong",
+      });
+    }
+  };
+
+  useEffect(() => {
+    const fetchUserIdAndDetails = async () => {
+      try {
+        const id = await AsyncStorage.getItem("userId");
+        if (id) {
+          const result = await getUserDetails(id);
+          if (result.success) {
+            setUser(result.user);
+          } else {
+            setError(result.message);
+          }
+        } else {
+          setError("No user ID found in storage.");
+        }
+      } catch (err: any) {
+        setError("Failed to load user data.");
+      }
+    };
+
+    fetchUserIdAndDetails();
+  }, []);
+  useEffect(() => {
+    if (user?.userid) {
+      fetchOpportunities(user?.userid);
+    }
+  }, [user]);
+
+  console.log("opportunity", opportunities);
+
+  const fetchOpportunities = async (userId: string) => {
+    try {
+      const response = await fetch(
+        `http://crmclient.trinitysoftwares.in/crmAppApi/opportunity1.php?type=getAllOpportunity&loginid=${userId}`
+      );
+      const json = await response.json();
+
+      if (json.status === "success") {
+        setOpportunities(json.opportunities);
+      } else {
+        setError(json.message || "Error fetching opportunities.");
+      }
+    } catch (err) {
+      setError("Something went wrong while loading opportunities.");
+    }
+  };
+
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" color="#fff" size={24} />
-          </TouchableOpacity>
-
-          <Text style={styles.headerTitle}>Follow Up</Text>
-
-          <TouchableOpacity onPress={() => navigation.openDrawer()}>
-            <Ionicons name="menu" color="#fff" size={24} />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
-      <ScrollView contentContainerStyle={{ paddingBottom: 150 }}>
-        <View style={styles.card}>
-          <Text style={styles.label}>
-            Select Lead<Text style={styles.required}>*</Text>
-          </Text>
-          <View
-            style={{
-              borderWidth: 1,
-              borderColor: "#ccc",
-              borderRadius: 6,
-
-              marginTop: 5,
-            }}
-          >
-            <Picker
-              selectedValue={form.lead}
-              onValueChange={(itemValue) => handleChange("product", itemValue)}
-            >
-              <Picker.Item label="--Select--" value="" />
-              <Picker.Item label="Lead A" value="productA" />
-              <Picker.Item label="Lead B" value="productB" />
-              <Picker.Item label="Lead C" value="serviceC" />
-            </Picker>
-          </View>
-
-          <Text style={styles.label}>
-            Select Opportunity<Text style={styles.required}>*</Text>
-          </Text>
-          <View
-            style={{
-              borderWidth: 1,
-              borderColor: "#ccc",
-              borderRadius: 6,
-
-              marginTop: 5,
-            }}
-          >
-            <Picker
-              selectedValue={form.lead}
-              onValueChange={(itemValue) => handleChange("product", itemValue)}
-            >
-              <Picker.Item label="--Select--" value="" />
-              <Picker.Item label="Lead A" value="productA" />
-              <Picker.Item label="Lead B" value="productB" />
-              <Picker.Item label="Lead C" value="serviceC" />
-            </Picker>
-          </View>
-
-          <Text style={styles.label}>
-            Follow Up Date<Text style={styles.required}>*</Text>
-          </Text>
-          <TouchableOpacity
-            onPress={() => setShowDate(true)}
-            style={styles.input}
-          >
-            <Text>{form.followUpDate || "Select date"}</Text>
-          </TouchableOpacity>
-
-          {showDate && (
-            <DateTimePicker
-              value={
-                form.followUpDate ? new Date(form.followUpDate) : new Date()
-              }
-              mode="date"
-              display="default"
-              onChange={(event, selectedDate) => {
-                setShowDate(Platform.OS === "ios");
-                if (selectedDate) {
-                  const day = selectedDate
-                    .getDate()
-                    .toString()
-                    .padStart(2, "0");
-                  const month = (selectedDate.getMonth() + 1)
-                    .toString()
-                    .padStart(2, "0");
-                  const year = selectedDate.getFullYear();
-                  const formattedDate = `${day}/${month}/${year}`;
-                  handleChange("followUpDate", formattedDate);
-                }
-              }}
-            />
-          )}
-
-          <Text style={styles.label}>
-            Follow Up Time<Text style={styles.required}>*</Text>
-          </Text>
-          <TouchableOpacity
-            onPress={() => setShowTime(true)}
-            style={styles.input}
-          >
-            <Text>{form.followUpTime || "Select time"}</Text>
-          </TouchableOpacity>
-
-          {showTime && (
-            <DateTimePicker
-              value={new Date()}
-              mode="time"
-              display="default"
-              onChange={(event, selectedTime) => {
-                setShowTime(Platform.OS === "ios");
-                if (selectedTime) {
-                  const formattedTime = selectedTime.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  });
-                  handleChange("followUpTime", formattedTime);
-                }
-              }}
-            />
-          )}
-
-          <Text style={styles.label}>
-            Note<Text style={styles.required}>*</Text>
-          </Text>
-          <TextInput
-            style={[styles.input, { height: 80 }]}
-            placeholder="Description..."
-            multiline
-            value={form.description}
-            onChangeText={(text) => handleChange("description", text)}
-          />
-
-          <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.saveBtn}>
-              <Text style={styles.btnText}>Save</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
-              <Text style={styles.btnText}>Reset</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        <TouchableOpacity
-          onPress={() => router.push("/(components)/followUpUserDetails")}
-          style={styles.followUpCard}
-        >
-          <View style={styles.profileRow}>
-            <Ionicons
-              name="person-circle-outline"
-              size={48}
-              color="#5975D9"
-              style={styles.profileIcon}
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.profileName}>Roma Chakradhari</Text>
-
-              <View style={styles.detailRow}>
-                <Ionicons name="calendar-outline" size={16} color="#555" />
-                <Text style={styles.detailText}>14/05/2025</Text>
-
-                <Ionicons
-                  name="time-outline"
-                  size={16}
-                  color="#555"
-                  style={{ marginLeft: 12 }}
-                />
-                <Text style={styles.detailText}>05:00 PM</Text>
-              </View>
-
-              <Text style={styles.noteText}>
-                Discussed service updates. Next follow-up scheduled on
-                20/05/2025.
-              </Text>
-            </View>
-          </View>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-      </ScrollView>
-    </View>
+        <Text style={styles.headerTitle}>Create Follow Up</Text>
+        <TouchableOpacity onPress={() => navigation.openDrawer()}>
+          <Ionicons name="menu" size={24} color="#fff" />
+        </TouchableOpacity>
+      </LinearGradient>
+
+      <View style={styles.card}>
+        <Text style={styles.label}>
+          Select Lead/Opportunity <Text style={styles.required}>*</Text>
+        </Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={lead}
+            onValueChange={(itemValue) => setLead(itemValue)}
+          >
+            <Picker.Item label="---Select Opportunity---" value="" />
+            {opportunities.map((opp) => (
+              <Picker.Item
+                key={opp.opp_create_id}
+                label={`${opp.name || "N/A"} / ${opp.opportunity_name} / ${opp.contact || "N/A"}`}
+                value={opp.opp_create_id}
+              />
+            ))}
+          </Picker>
+        </View>
+
+        <Text style={styles.label}>Follow Up Date</Text>
+        <TouchableOpacity
+          style={styles.input}
+          onPress={() => setShowDatePicker(true)}
+        >
+          <Text>{formatDate(date)}</Text>
+        </TouchableOpacity>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={date}
+            mode="date"
+            display="default"
+            onChange={handleDateChange}
+          />
+        )}
+
+        <Text style={styles.label}>Follow Up Time</Text>
+        <TouchableOpacity
+          style={styles.input}
+          onPress={() => setShowTimePicker(true)}
+        >
+          <Text>{formatTime(date)}</Text>
+        </TouchableOpacity>
+
+        {showTimePicker && (
+          <DateTimePicker
+            value={date}
+            mode="time"
+            display="default"
+            onChange={handleTimeChange}
+          />
+        )}
+        <Text style={styles.label}>Notes</Text>
+        <TextInput
+          placeholder="Description..."
+          multiline
+          numberOfLines={4}
+          style={styles.textArea}
+          value={description}
+          onChangeText={setDescription}
+        />
+
+        <TouchableOpacity style={styles.button} onPress={handleSave}>
+          <Text style={styles.buttonText}>Save</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
-}
-export default withDrawer(FollowUpForm, "FollowUpForm");
+};
+
+export default withDrawer(CreateReminderScreen, "CreateReminderScreen");
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 30,
-    backgroundColor: "#f5f7ff",
-  },
-  followUpCard: {
-    backgroundColor: "#f0f3ff",
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  profileRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-  profileIcon: {
-    marginRight: 12,
-  },
-  profileName: {
-    fontWeight: "700",
-    fontSize: 16,
-    color: "#070557",
-    marginBottom: 4,
-  },
-  detailRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  detailText: {
-    marginLeft: 4,
-    fontSize: 14,
-    color: "#444",
-  },
-  noteText: {
-    fontSize: 13,
-    color: "#666",
-    marginTop: 4,
-    lineHeight: 18,
-  },
-
-  heading: {
-    fontSize: 20,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 10,
-    backgroundColor: "#1a237e",
-    color: "white",
-    padding: 10,
-    borderRadius: 5,
+    backgroundColor: "#f2f6ff",
+    flexGrow: 1,
+    paddingVertical: 30,
   },
   header: {
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-  },
-  headerContent: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#004c91",
+    padding: 15,
   },
   headerTitle: {
     color: "#fff",
     fontSize: 20,
-    textAlign: "center",
-    flex: 1,
-    marginHorizontal: 12,
+    fontWeight: "bold",
   },
   card: {
     backgroundColor: "white",
-    borderRadius: 10,
-    padding: 16,
-    elevation: 3,
+    margin: 16,
+    borderRadius: 12,
+    padding: 20,
+    elevation: 2,
   },
   label: {
     marginTop: 10,
     fontWeight: "600",
+    color: "#333",
   },
   required: {
     color: "red",
   },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 8,
+    marginTop: 5,
+    marginBottom: 10,
+  },
+  textArea: {
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    minHeight: 80,
+    marginTop: 5,
+    marginBottom: 10,
+    textAlignVertical: "top",
+  },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    padding: 15,
+    borderColor: "#cbd5e1",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 16,
     marginTop: 5,
+    marginBottom: 10,
+    backgroundColor: "#fff",
   },
-  buttonRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  button: {
+    backgroundColor: "#1F40B5",
+    paddingVertical: 14,
+    borderRadius: 8,
     marginTop: 20,
   },
-  saveBtn: {
-    backgroundColor: "#1F40B5",
-    padding: 10,
-    borderRadius: 6,
-    width: "48%",
-    alignItems: "center",
-  },
-  resetBtn: {
-    backgroundColor: "#d32f2f",
-    padding: 10,
-    borderRadius: 6,
-    width: "48%",
-    alignItems: "center",
-  },
-  btnText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-
-  pastFollowUp: {
-    marginTop: 30,
-    padding: 10,
-    marginHorizontal: 10,
-  },
-  pastLabel: {
+  buttonText: {
+    textAlign: "center",
+    color: "#fff",
     fontWeight: "600",
-    marginBottom: 10,
     fontSize: 16,
-    color: "#070557",
   },
 });

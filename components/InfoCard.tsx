@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   cardSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#999',
     marginTop: 4,
   },

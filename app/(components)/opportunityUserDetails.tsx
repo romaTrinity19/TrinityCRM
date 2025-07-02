@@ -1,25 +1,32 @@
-import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  Modal,
-  FlatList,
-  Image,
-} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
 import { ImagePickerAsset } from "expo-image-picker";
-import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Toast from "react-native-toast-message";
 
 const menuItems = ["Edit", "Delete", "Whatsapp", "Transfer"];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState("Information");
+  const { id } = useLocalSearchParams();
   const [menuVisible, setMenuVisible] = useState(false);
   const [images, setImages] = useState<ImagePickerAsset[]>([]); // Typed here
   const [previewVisible, setPreviewVisible] = useState(false);
@@ -27,7 +34,15 @@ export default function App() {
     null
   );
   const [galleryVisible, setGalleryVisible] = useState(false); // For showing all images gallery
-
+  const formatDateReverse = (input: string): string => {
+    if (!input) return "";
+    const parts = input.split("-");
+    if (parts.length === 3) {
+      const [year, month, day] = parts;
+      return `${day}/${month}/${year}`;
+    }
+    return input;
+  };
   const pickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -51,6 +66,97 @@ export default function App() {
     setPreviewVisible(true);
   };
 
+  const [data, setData] = useState<any>({});
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [deleteVisible, setDeleteVisible] = useState(false);
+
+  useEffect(() => {
+    const fetchOpportunityById = async () => {
+      if (!id) return;
+
+      try {
+        const res = await axios.get(
+          `http://crmclient.trinitysoftwares.in/crmAppApi/opportunity1.php?type=getOpportunityById&opp_create_id=${id}`
+        );
+
+        if (res.data.status === "success") {
+          setData(res.data.opportunity);
+        } else {
+          setError("Opportunity not found");
+        }
+      } catch (err) {
+        console.error("Error fetching opportunity:", err);
+        setError("Something went wrong");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOpportunityById();
+  }, [id]);
+
+  const handleMenuItemPress = async (action: any) => {
+    setMenuVisible(false);
+
+    switch (action) {
+      case "Edit":
+        router.push({
+          pathname: "/(components)/newOpportunity",
+          params: { type: "update", id: id },
+        });
+        break;
+
+      case "Delete":
+        setDeleteVisible(true);
+        break;
+
+      case "Whatsapp":
+        const url = `whatsapp://send?phone=${data?.whatsapp_no}`;
+        Linking.openURL(url).catch(() =>
+          Alert.alert("Error", "WhatsApp is not installed on your device")
+        );
+        break;
+
+      case "Transfer":
+        Alert.alert("Transfer action triggered");
+        break;
+
+      default:
+        break;
+    }
+  };
+  const handleConfirmDelete = async () => {
+    setDeleteVisible(false);
+    try {
+      const res = await axios.delete(
+        `http://crmclient.trinitysoftwares.in/crmAppApi/opportunity1.php?type=deleteOpportunity&id=${id}`,
+        { headers: { "Content-Type": "application/json" } }
+      );
+      if (res.data.status === "success") {
+        Toast.show({ type: "success", text1: "Deleted successfully" });
+        router.push("/(components)/opportunity");
+      } else {
+        Toast.show({
+          type: "error",
+          text1: res.data.message || "Failed to delete",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Network error" });
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#5975D9" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.safeContainer}>
       <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.headerBar}>
@@ -65,20 +171,43 @@ export default function App() {
 
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.name}>Roma Chakradhari</Text>
-          <Text style={styles.amount}>₹ 1000.00</Text>
+          <Text style={styles.name}>{data?.name}</Text>
+          <Text style={styles.amount}>{data?.estimated_amount}</Text>
         </View>
 
         <View style={styles.detailsBox}>
-          <Text style={styles.label}>
-            Opportunity No: <Text style={styles.value}>008</Text>
-          </Text>
-          <Text style={styles.label}>
-            Opportunity Date: <Text style={styles.value}>23-05-2025</Text>
-          </Text>
-          <Text style={styles.label}>
-            Name: <Text style={styles.value}>Trinity Solutions</Text>
-          </Text>
+          <View
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <Text style={styles.label}>Opportunity No</Text>
+            <Text style={styles.value}>: 000{id}</Text>
+          </View>
+          <View
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <Text style={styles.label}>Opportunity Date</Text>
+            <Text style={styles.value}>
+              : {formatDateReverse(data?.expected_date)}
+            </Text>
+          </View>
+          <View
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <Text style={styles.label}>Name</Text>
+            <Text style={styles.value}>: {data?.name}</Text>
+          </View>
         </View>
 
         <View style={styles.tabRow}>
@@ -101,32 +230,39 @@ export default function App() {
 
         {activeTab === "Information" ? (
           <View style={styles.infoSection}>
-            <View style={styles.infoGrid}>
-              {/* Left Column */}
-              <View style={styles.infoColumn}>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Contact Info:</Text>
-                  <Text style={styles.infoLabel}>Product / Service:</Text>
-
-                  <Text style={styles.infoLabel}>Opportunity Service:</Text>
-                  <Text style={styles.infoLabel}>Opportunity Agent:</Text>
-                  <Text style={styles.infoLabel}>Opportunity Owner:</Text>
+            {[
+              { label: "Contact Info", value: data?.contact || "-" },
+              {
+                label: "Product / Service",
+                value: Array.isArray(data?.prod_service_names)
+                  ? data.prod_service_names.map((item: any, i: any) => (
+                      <Text key={i} style={styles.infoValueLine}>
+                        • {item}
+                      </Text>
+                    ))
+                  : "-",
+              },
+              {
+                label: "Opportunity Source",
+                value: data?.lead_details?.lead_source_name || "-",
+              },
+              {
+                label: "Opportunity Agent",
+                value: data?.lead_details?.agent_name || "-",
+              },
+              { label: "Opportunity Owner", value: data?.emp_name || "-" },
+            ].map((item, index) => (
+              <View key={index} style={styles.infoRowBorder}>
+                <Text style={styles.infoLabel}>{item.label}</Text>
+                <View style={styles.infoRightColumn}>
+                  {typeof item.value === "string" ? (
+                    <Text style={styles.infoValue}>{item.value}</Text>
+                  ) : (
+                    item.value
+                  )}
                 </View>
               </View>
-
-              {/* Right Column */}
-              <View style={styles.infoColumn}>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoValue}>1234567890</Text>
-                  <Text style={styles.infoValue}>Software Development</Text>
-                  <Text style={styles.infoValue}>Trinity Solutions</Text>
-
-                  <Text style={styles.infoValue}>Trinity Solutions</Text>
-
-                  <Text style={styles.infoValue}>Trinity Solutions</Text>
-                </View>
-              </View>
-            </View>
+            ))}
           </View>
         ) : (
           <View style={styles.notesSection}>
@@ -233,15 +369,59 @@ export default function App() {
         <TouchableOpacity
           style={styles.modalOverlay}
           onPress={() => setMenuVisible(false)}
+          activeOpacity={1}
         >
           <View style={styles.menuModal}>
             {menuItems.map((item) => (
-              <Text key={item} style={styles.menuItem}>
-                {item}
-              </Text>
+              <TouchableOpacity
+                key={item}
+                onPress={() => handleMenuItemPress(item)}
+              >
+                <Text style={styles.menuItem}>{item}</Text>
+              </TouchableOpacity>
             ))}
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      <Modal
+        transparent
+        visible={deleteVisible}
+        animationType="fade"
+        onRequestClose={() => setDeleteVisible(false)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.3)",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          onPress={() => setDeleteVisible(false)}
+        >
+          <View style={styles.confirmModal}>
+            <Text style={styles.confirmTitle}>Confirm Deletion</Text>
+            <Text style={styles.confirmMsg}>
+              Are you sure you want to delete this lead?
+            </Text>
+
+            <View style={styles.confirmBtnContainer}>
+              <TouchableOpacity
+                style={[styles.confirmBtn, { backgroundColor: "#ccc" }]}
+                onPress={() => setDeleteVisible(false)}
+              >
+                <Text style={styles.confirmBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.confirmBtn, { backgroundColor: "#d9534f" }]}
+                onPress={handleConfirmDelete}
+              >
+                <Text style={styles.confirmBtnText}>Yes, Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Pressable>
       </Modal>
     </View>
   );
@@ -284,8 +464,8 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
   },
-  label: { fontSize: 14, marginVertical: 4, color: "#001b5e" },
-  value: { fontWeight: "bold", color: "#5975D9" },
+  label: { fontSize: 14, marginVertical: 4, color: "#001b5e", width: "45%" },
+  value: { fontWeight: "bold", color: "#5975D9", width: "55%" },
 
   tabRow: {
     flexDirection: "row",
@@ -308,11 +488,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  infoSection: {
-    padding: 15,
-    backgroundColor: "#eef2ff",
-    borderRadius: 8,
-  },
   infoText: {
     marginVertical: 5,
     fontSize: 14,
@@ -420,25 +595,82 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
 
-  infoGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  infoColumn: {
-    flex: 1,
-    paddingRight: 10,
-  },
   infoRow: {
     marginBottom: 10,
   },
-  infoLabel: {
-    fontWeight: "600",
-    color: "#001b5e",
-    marginTop: 8,
+
+  infoSection: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginVertical: 10,
   },
+
+  infoRowBorder: {
+    flexDirection: "row",
+
+    alignItems: "flex-start",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
+  },
+
+  infoLabel: {
+    fontWeight: "bold",
+    color: "#000",
+    width: "44%",
+    fontSize: 14,
+  },
+
+  infoRightColumn: {
+    flex: 2,
+  },
+
   infoValue: {
-    color: "#5975D9",
-    fontWeight: "600",
-    marginTop: 8,
+    color: "#000",
+    fontSize: 14,
+    width: "56%",
+  },
+
+  infoValueLine: {
+    color: "#000",
+    fontSize: 14,
+    lineHeight: 20,
+  },
+
+  confirmModal: {
+    backgroundColor: "#fff",
+    marginHorizontal: 30,
+    borderRadius: 10,
+    padding: 20,
+    alignItems: "center",
+    elevation: 5,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  confirmMsg: {
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  confirmBtnContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  confirmBtn: {
+    flex: 1,
+    marginHorizontal: 5,
+    paddingVertical: 10,
+    borderRadius: 5,
+    alignItems: "center",
+  },
+  confirmBtnText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });

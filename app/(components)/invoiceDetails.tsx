@@ -111,7 +111,7 @@ const QuotationDetails = () => {
                   style={{ paddingVertical: 10, paddingHorizontal: 15 }}
                   onPress={() => {
                     setMenuVisible(false);
-                    console.log("Download tapped");
+                  
                   }}
                 >
                   <Text style={{ fontSize: 16, color: "#333" }}>Download</Text>
