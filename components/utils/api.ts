@@ -169,3 +169,45 @@ export const createOpportunity = async (data: any, loginid: string) => {
   }
 };
 
+
+export const getAllClientDocument = async () => {
+  try {
+    const response = await fetch("http://crmclient.trinitysoftwares.in/crmAppApi/customerProfile.php?type=getAllClientDocuments", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const result = await response.json();
+    return result;  
+  } catch (error) {
+    console.error("Failed to fetch state details:", error);
+    return { status: "error", message: "Network error" };
+  }
+};
+
+
+export const getMimeType = (filename: string): string => {
+  const extension = filename.split(".").pop()?.toLowerCase();
+  switch (extension) {
+    case "pdf":
+      return "application/pdf";
+    case "doc":
+      return "application/msword";
+    case "docx":
+      return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    case "xls":
+      return "application/vnd.ms-excel";
+    case "xlsx":
+      return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "png":
+      return "image/png";
+    default:
+      return "application/octet-stream";
+  }
+};
+

@@ -10,11 +10,12 @@ import {
   Pressable,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { useNavigation } from "@react-navigation/native";
 import { withDrawer } from "./drawer";
@@ -52,6 +53,8 @@ const CustomerForm = () => {
   const [user, setUser] = useState<any>(null);
   const [states, setStates] = useState([]);
   const [selectedStateId, setSelectedStateId] = useState<string>("");
+  const [customerId, setCustomerId] = useState<string | null>(null); // null means create
+  const { type, id } = useLocalSearchParams();
 
   const handleReset = () => {
     setCustomerName("");
@@ -73,7 +76,6 @@ const CustomerForm = () => {
         type: "error",
         text1: "Name and Contact Number are required.",
       });
-
       return;
     }
 
@@ -82,60 +84,120 @@ const CustomerForm = () => {
         type: "error",
         text1: "User not loaded. Please try again.",
       });
-
       return;
     }
 
-    const payload = {
-      name: customerName,
-      email: email,
-      contact: contactNumber,
-      whatsapp_no: whatsappNumber,
-      address: shippingAddress,
-      billing_address: billingAddress,
-      state_id: selectedStateId,
-      company_name: companyName,
-      gstin: gstin,
-      pan_no: pan,
-      send_msg: "0",
-      send_mail: "0",
-    };
+    const payload =
+      type === "update" && id
+        ? {
+            // 🛠 UPDATE CUSTOMER
+            id: id,
+            name: customerName,
+            email_id: email,
+            contact_no: contactNumber,
+            whatsapp_no: whatsappNumber,
+            address: shippingAddress,
+            billing_address: billingAddress,
+            state_id: selectedStateId,
+            company_name: companyName,
+            gstin,
+            pan_no: pan,
+          }
+        : {
+            // ➕ CREATE CUSTOMER
+            name: customerName,
+            email: email,
+            contact: contactNumber,
+            whatsapp_no: whatsappNumber,
+            address: shippingAddress,
+            billing_address: billingAddress,
+            state_id: selectedStateId,
+            company_name: companyName,
+            gstin,
+            pan_no: pan,
+            send_msg: "0",
+            send_mail: "0",
+          };
+
     setLoading(true);
     try {
-      const response = await axios.post(
-        `http://crmclient.trinitysoftwares.in/crmAppApi/customerProfile.php?type=createCustomer&loginid=${user.userid}`,
-        payload,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      let response;
+
+      if (type === "update" && id) {
+        const updatePayload = {
+          ...payload,
+          id,
+        };
+
+        console.log("Update Payload:", updatePayload);
+
+        response = await axios.patch(
+          `http://crmclient.trinitysoftwares.in/crmAppApi/customerProfile.php?type=updateCustomer`,
+          updatePayload,
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      } else {
+        console.log("Create Payload:", payload);
+
+        response = await axios.post(
+          `http://crmclient.trinitysoftwares.in/crmAppApi/customerProfile.php?type=createCustomer&loginid=${user?.userid}`,
+          payload,
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+      }
 
       if (response.data.status === "success") {
         Toast.show({
           type: "success",
-          text1: "Customer created successfully",
+          text1: customerId
+            ? "Customer updated successfully"
+            : "Customer created successfully",
         });
-
+        router.replace("/(components)/customerProfileList");
         handleReset();
       } else {
         Toast.show({
           type: "error",
           text1: response.data.message,
-          text2: "Failed to create customer",
+          text2: customerId ? "Update failed" : "Creation failed",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("API Error:", error);
-      Toast.show({
-        type: "error",
-        text1: "Something went wrong while creating customer.",
-      });
 
-      Alert.alert("Error", "Something went wrong while creating customer.");
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 409) {
+          Toast.show({
+            type: "error",
+            text1: "Contact already exists.",
+          });
+          Alert.alert(
+            "Customer Exists",
+            "A customer with this contact number already exists."
+          );
+        } else {
+          Toast.show({
+            type: "error",
+            text1: "Server Error",
+            text2: error.response?.data?.message || "Something went wrong.",
+          });
+        }
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Unexpected Error",
+        });
+      }
     } finally {
-      setLoading(false); 
+      setLoading(false);
     }
   };
 
@@ -175,9 +237,39 @@ const CustomerForm = () => {
     fetchStates();
   }, []);
 
-  console.log("state data", states);
+  useEffect(() => {
+    if (id) {
+      setCustomerId(id.toString());
+      fetchCustomerData(id.toString());
+    }
+  }, [id]);
+
+  const fetchCustomerData = async (customerId: string) => {
+    try {
+      const response = await axios.get(
+        `http://crmclient.trinitysoftwares.in/crmAppApi/customerProfile.php?type=getCustomerById&id=${customerId}`
+      );
+      const data = response.data.customer;
+
+      if (data) {
+        setCustomerName(data.name || "");
+        setContactNumber(data.contact_no || "");
+        setEmail(data.email_id || "");
+        setWhatsappNumber(data.whatsapp_no || "");
+        setCompanyName(data.company_name || "");
+        setGstin(data.gstin || "");
+        setPan(data.pan_no || "");
+        setBillingAddress(data.billing_address || "");
+        setShippingAddress(data.address || "");
+        setSelectedStateId(data.state_id || "");
+      }
+    } catch (err) {
+      Alert.alert("Error", "Failed to fetch customer details");
+    }
+  };
 
   const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
+   
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f2f6ff" }}>
@@ -337,10 +429,23 @@ const CustomerForm = () => {
           </View>
 
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-              <Text style={styles.buttonText}>Save</Text>
+            <TouchableOpacity
+              style={[styles.saveButton, loading && styles.disabledButton]}
+              onPress={handleSave}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Save</Text>
+              )}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
+
+            <TouchableOpacity
+              style={styles.resetButton}
+              onPress={handleReset}
+              disabled={loading} // Optional: disable during save
+            >
               <Text style={styles.buttonText}>Reset</Text>
             </TouchableOpacity>
           </View>
@@ -420,23 +525,37 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: "row",
-    gap: 16,
+    justifyContent: "space-between",
     marginTop: 20,
+    gap: 16,
   },
+
   saveButton: {
     backgroundColor: "#2D4491",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
   },
+
   resetButton: {
     backgroundColor: "#E74C3C",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    flex: 1,
   },
+
   buttonText: {
     color: "#fff",
     fontWeight: "600",
+  },
+
+  disabledButton: {
+    opacity: 0.6,
   },
 });

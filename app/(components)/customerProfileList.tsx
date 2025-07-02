@@ -43,12 +43,9 @@ type Lead = {
   email_id: string;
   contact_no: string;
   whatsapp_no: string;
-  walkin_date: string; // Maps to leadDate
-  lead_source_id: string; // Maps to leadSource
-  agent_id: string; // Maps to leadAgent
-
+  state_name: string;  
   state_id: string;
-  estimate_amt: string; // Maps to amount
+  company_name: string; // Maps to amount
   address: string; // Maps to notes
   type: string; // Will be "lead"
   lead_status: string;
@@ -150,7 +147,7 @@ function NewLeadsScreen() {
               emoji: "✏️",
               onPress: () =>
                 router.push({
-                  pathname: "/(pages)/newLeads",
+                  pathname: "/(components)/customerProfile",
                   params: { type: "update", id: item.lead_id },
                 }),
             },
@@ -599,6 +596,16 @@ function NewLeadsScreen() {
             />
             <View style={styles.horizontalLine} />
             <Card.Content>
+                {item.company_name ? (
+                <View style={styles.row}>
+                  <IconButton
+                    icon="wallet-outline"
+                    size={18}
+                    iconColor="#4b3ba9"
+                  />
+                  <Text>{item.company_name}</Text>
+                </View>
+              ) : null}
               <View style={styles.row}>
                 <IconButton
                   icon="bookmark-outline"
@@ -617,20 +624,11 @@ function NewLeadsScreen() {
                   <Text>{item.contact_no}</Text>
                 </View>
               ) : null}
-              {item.estimate_amt ? (
-                <View style={styles.row}>
-                  <IconButton
-                    icon="wallet-outline"
-                    size={18}
-                    iconColor="#4b3ba9"
-                  />
-                  <Text>{item.estimate_amt}</Text>
-                </View>
-              ) : null}
-              {item.walkin_date ? (
+             
+              {item.address ? (
                 <View style={styles.row}>
                   <IconButton icon="calendar" size={18} iconColor="#4b3ba9" />
-                  <Text>{item.walkin_date}</Text>
+                  <Text>{item.address}</Text>
                 </View>
               ) : null}
             </Card.Content>
