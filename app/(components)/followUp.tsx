@@ -3,9 +3,10 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useNavigation } from "expo-router";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -23,6 +24,7 @@ type RootDrawerParamList = {
   Reminder: undefined;
 };
 const CreateReminderScreen = () => {
+  const { type, id } = useLocalSearchParams();
   const [user, setUser] = useState<any>(null);
   const [error, setError] = useState("");
   const [opportunities, setOpportunities] = useState<any[]>([]);
@@ -32,27 +34,18 @@ const CreateReminderScreen = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
-  const handleDateChange = (event: any, selectedDate: any) => {
-    const currentDate = selectedDate || date;
-    setShowDatePicker(false);
-    setDate(currentDate);
-  };
+  const [loading, setLoading] = useState(false);
 
-  const handleTimeChange = (event: any, selectedTime: any) => {
-    const currentDate = selectedTime || date;
-    setShowTimePicker(false);
-    setDate(currentDate);
-  };
+  const formatDateForApi = (date: Date) => date.toISOString().split("T")[0];
+  const formatTimeForApi = (date: Date) => date.toTimeString().slice(0, 5);
 
-  const formatDate = (d: any) => {
+  const formatDate = (d: Date) => {
     const mm = d.getMonth() + 1;
     const dd = d.getDate();
-    return `${mm < 10 ? "0" + mm : mm}/${
-      dd < 10 ? "0" + dd : dd
-    }/${d.getFullYear()}`;
+    return `${mm < 10 ? "0" + mm : mm}/${dd < 10 ? "0" + dd : dd}/${d.getFullYear()}`;
   };
 
-  const formatTime = (d: any) => {
+  const formatTime = (d: Date) => {
     let hours = d.getHours();
     const minutes = d.getMinutes();
     const ampm = hours >= 12 ? "PM" : "AM";
@@ -60,23 +53,22 @@ const CreateReminderScreen = () => {
     return `${hours}:${minutes < 10 ? "0" + minutes : minutes} ${ampm}`;
   };
 
-  const formatDateForApi = (date: Date) => {
-    return date.toISOString().split("T")[0];
+  const handleDateChange = (_: any, selectedDate: any) => {
+    if (selectedDate) setDate(selectedDate);
+    setShowDatePicker(false);
   };
 
-  const formatTimeForApi = (date: Date) => {
-    return date.toTimeString().slice(0, 5);
+  const handleTimeChange = (_: any, selectedTime: any) => {
+    if (selectedTime) setDate(selectedTime);
+    setShowTimePicker(false);
   };
 
   const handleSave = async () => {
-    if (!lead || !date || !description || !user?.userid) {
-      Toast.show({
-        type: "error",
-        text1: "All fields are required",
-      });
+    if (!lead || !description || !user?.userid) {
+      Toast.show({ type: "error", text1: "All fields are required" });
       return;
     }
-
+    setLoading(true);
     const payload = {
       cust_id: lead,
       followup_date: formatDateForApi(date),
@@ -85,22 +77,37 @@ const CreateReminderScreen = () => {
     };
 
     try {
-      const response = await fetch(
-        `http://crmclient.trinitysoftwares.in/crmAppApi/followUp.php?type=createFollowUp&loginid=${user?.userid}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      let response;
+      if (type === "update" && id) {
+        // Update
+        response = await fetch(
+          `http://crmclient.trinitysoftwares.in/crmAppApi/followUp.php?type=updateFollowUp&loginid=${user?.userid}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...payload, followup_id: id }),
+          }
+        );
+      } else {
+        // Create
+        response = await fetch(
+          `http://crmclient.trinitysoftwares.in/crmAppApi/followUp.php?type=createFollowUp&loginid=${user?.userid}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
+      }
 
       const result = await response.json();
       if (result.status === "success") {
         Toast.show({
           type: "success",
-          text1: "Follow-up created successfully",
+          text1:
+            type === "update"
+              ? "Follow-up updated successfully"
+              : "Follow-up created successfully",
         });
         router.push("/(components)/followUpList");
       } else {
@@ -111,41 +118,26 @@ const CreateReminderScreen = () => {
       }
     } catch (error) {
       console.error("API Error:", error);
-      Toast.show({
-        type: "error",
-        text1: "Something went wrong",
-      });
+      Toast.show({ type: "error", text1: "Something went wrong" });
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    const fetchUserIdAndDetails = async () => {
-      try {
-        const id = await AsyncStorage.getItem("userId");
-        if (id) {
-          const result = await getUserDetails(id);
-          if (result.success) {
-            setUser(result.user);
-          } else {
-            setError(result.message);
-          }
-        } else {
-          setError("No user ID found in storage.");
-        }
-      } catch (err: any) {
-        setError("Failed to load user data.");
+  const fetchUserIdAndDetails = async () => {
+    try {
+      const id = await AsyncStorage.getItem("userId");
+      if (id) {
+        const result = await getUserDetails(id);
+        if (result.success) setUser(result.user);
+        else setError(result.message);
+      } else {
+        setError("No user ID found in storage.");
       }
-    };
-
-    fetchUserIdAndDetails();
-  }, []);
-  useEffect(() => {
-    if (user?.userid) {
-      fetchOpportunities(user?.userid);
+    } catch {
+      setError("Failed to load user data.");
     }
-  }, [user]);
-
-  console.log("opportunity", opportunities);
+  };
 
   const fetchOpportunities = async (userId: string) => {
     try {
@@ -153,16 +145,50 @@ const CreateReminderScreen = () => {
         `http://crmclient.trinitysoftwares.in/crmAppApi/opportunity1.php?type=getAllOpportunity&loginid=${userId}`
       );
       const json = await response.json();
-
-      if (json.status === "success") {
-        setOpportunities(json.opportunities);
-      } else {
-        setError(json.message || "Error fetching opportunities.");
-      }
-    } catch (err) {
+      if (json.status === "success") setOpportunities(json.opportunities);
+      else setError(json.message || "Error fetching opportunities.");
+    } catch {
       setError("Something went wrong while loading opportunities.");
     }
   };
+
+  const fetchFollowUpById = async (followupId: string) => {
+    try {
+      const response = await fetch(
+        `http://crmclient.trinitysoftwares.in/crmAppApi/followUp.php?type=getFollowUpById&followup_id=${followupId}`
+      );
+      const json = await response.json();
+      if (json.status === "success") {
+        const data = json.data;
+        setLead(data.opp_create_id);
+        setDescription(data.description);
+        setDate(new Date(`${data.followup_date}T${data.followup_time}`));
+      } else {
+        Toast.show({ type: "error", text1: "Failed to load follow-up" });
+      }
+    } catch {
+      Toast.show({ type: "error", text1: "Error fetching follow-up data" });
+    }
+  };
+
+  // Fetch user
+  useEffect(() => {
+    fetchUserIdAndDetails();
+  }, []);
+
+  // Fetch opportunities after user loads
+  useEffect(() => {
+    if (user?.userid) fetchOpportunities(user?.userid);
+  }, [user]);
+
+  // Fetch follow-up data if updating
+  useEffect(() => {
+    if (type === "update" && id) {
+      const idParam = Array.isArray(id) ? id[0] : id;
+
+      fetchFollowUpById(idParam);
+    }
+  }, [type, id]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -170,7 +196,9 @@ const CreateReminderScreen = () => {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Follow Up</Text>
+        <Text style={styles.headerTitle}>
+          {type === "update" ? "Update Follow Up" : "Create Follow Up"}
+        </Text>
         <TouchableOpacity onPress={() => navigation.openDrawer()}>
           <Ionicons name="menu" size={24} color="#fff" />
         </TouchableOpacity>
@@ -181,10 +209,7 @@ const CreateReminderScreen = () => {
           Select Lead/Opportunity <Text style={styles.required}>*</Text>
         </Text>
         <View style={styles.pickerContainer}>
-          <Picker
-            selectedValue={lead}
-            onValueChange={(itemValue) => setLead(itemValue)}
-          >
+          <Picker selectedValue={lead} onValueChange={setLead} enabled={!(type === "update")}>
             <Picker.Item label="---Select Opportunity---" value="" />
             {opportunities.map((opp) => (
               <Picker.Item
@@ -203,7 +228,6 @@ const CreateReminderScreen = () => {
         >
           <Text>{formatDate(date)}</Text>
         </TouchableOpacity>
-
         {showDatePicker && (
           <DateTimePicker
             value={date}
@@ -220,7 +244,6 @@ const CreateReminderScreen = () => {
         >
           <Text>{formatTime(date)}</Text>
         </TouchableOpacity>
-
         {showTimePicker && (
           <DateTimePicker
             value={date}
@@ -229,6 +252,7 @@ const CreateReminderScreen = () => {
             onChange={handleTimeChange}
           />
         )}
+
         <Text style={styles.label}>Notes</Text>
         <TextInput
           placeholder="Description..."
@@ -239,8 +263,16 @@ const CreateReminderScreen = () => {
           onChangeText={setDescription}
         />
 
-        <TouchableOpacity style={styles.button} onPress={handleSave}>
-          <Text style={styles.buttonText}>Save</Text>
+        <TouchableOpacity
+          style={[styles.button, loading && { opacity: 0.7 }]}
+          onPress={handleSave}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Save</Text>
+          )}
         </TouchableOpacity>
       </View>
     </ScrollView>

@@ -103,7 +103,7 @@ function ReminderScreen() {
               onPress: () => {
                 setMenuVisible(false);
                 router.push({
-                  pathname: "/(pages)/newLeads",
+                  pathname: "/(components)/followUp",
                   params: { type: "update", id: item.followup_id },
                 });
               },
@@ -198,7 +198,7 @@ function ReminderScreen() {
     }
   };
 
-  if (loading && !followUps) {
+  if (loading  ) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#5975D9" />
@@ -375,7 +375,7 @@ function ReminderScreen() {
           renderItem={({ item }) => (
             <Card style={styles.card}>
               <TouchableOpacity
-                onPress={() => router.push("/(components)/followUpUserDetails")}
+                
               >
                 <View style={styles.cardHeader}>
                   <View style={styles.iconTitleWrapper}>
@@ -407,7 +407,30 @@ function ReminderScreen() {
                   <Text style={styles.cardLabel}>Follow Up Time</Text>
                   <Text style={styles.cardValue}>{item.followup_time}</Text>
                 </View>
+                 <View style={styles.cardDetailRow}>
+                    <Ionicons name="person-circle-outline" size={16} color="#4B65E9" />
+                  <Text style={styles.cardLabel}>Created By</Text>
+                  <Text
+                    style={[styles.cardValue, { flex: 1 }]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {item.created_by}
+                  </Text>
+                </View>
+                <View style={styles.cardDetailRow}>
+                   <FontAwesome5 name="handshake" size={16} color="#4B65E9" />
+                  <Text style={styles.cardLabel}>Opportunity</Text>
+                  <Text
+                    style={[styles.cardValue, { flex: 1 }]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {item.opportunity_name}
+                  </Text>
+                </View>
               </TouchableOpacity>
+
               {renderMenu(item)}
             </Card>
           )}
@@ -576,12 +599,13 @@ const styles = StyleSheet.create({
     color: "#4B65E9",
     fontWeight: "600",
     marginLeft: 6,
-    flex: 1,
+    width: "40%",
   },
   cardValue: {
     color: "#222",
     fontWeight: "500",
     fontSize: 14,
+    width: "60%",
   },
 
   menuItemRow: {

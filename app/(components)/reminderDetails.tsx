@@ -19,16 +19,15 @@ export default function FollowUpDetailCard() {
   const idParam = Array.isArray(id) ? id[0] : id;
   const [loading, setLoading] = useState(false);
 
-  const fetchFollowUpById = async () => {
+  const fetchReminderById = async () => {
     if (!idParam) {
       console.error("Invalid followup ID");
       return;
     }
     setLoading(true);
-
     try {
       const response = await fetch(
-        `http://crmclient.trinitysoftwares.in/crmAppApi/followUp.php?type=getFollowUpById&followup_id=${idParam}`
+        `http://crmclient.trinitysoftwares.in/crmAppApi/reminder.php?type=getReminderById&reminder_id=${idParam}`
       );
       const json = await response.json();
       console.log("API Response:", json);
@@ -49,10 +48,9 @@ export default function FollowUpDetailCard() {
   };
 
   useEffect(() => {
-    fetchFollowUpById();
+    fetchReminderById();
   }, []);
 
-  console.log("followUp", followUp);
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -60,6 +58,7 @@ export default function FollowUpDetailCard() {
       </View>
     );
   }
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.headerContainer}>
@@ -71,7 +70,7 @@ export default function FollowUpDetailCard() {
           onPress={() => router.back()}
         />
         <Ionicons name="chatbox-ellipses-outline" size={28} color="#fff" />
-        <Text style={styles.header}>Follow Up Details</Text>
+        <Text style={styles.header}>Reminder Details</Text>
       </View>
 
       <View style={styles.card}>
@@ -92,7 +91,7 @@ export default function FollowUpDetailCard() {
         {/* Date & Time */}
         <View style={styles.infoRow}>
           <Ionicons name="calendar-outline" size={20} color="#4B65E9" />
-          <Text style={styles.infoText}>{followUp?.followup_date}</Text>
+          <Text style={styles.infoText}>{followUp?.reminder_date}</Text>
 
           <Ionicons
             name="time-outline"
@@ -100,7 +99,7 @@ export default function FollowUpDetailCard() {
             color="#4B65E9"
             style={{ marginLeft: 20 }}
           />
-          <Text style={styles.infoText}>{followUp?.followup_time}</Text>
+          <Text style={styles.infoText}>{followUp?.reminder_time}</Text>
         </View>
         <View style={styles.infoRow}>
           <Ionicons name="person-circle-outline" size={20} color="#4B65E9" />
@@ -118,7 +117,7 @@ export default function FollowUpDetailCard() {
 
         {/* Description */}
         <View style={styles.descriptionBox}>
-          <Text style={styles.descriptionTitle}>Follow-Up Notes</Text>
+          <Text style={styles.descriptionTitle}>Reminder Notes</Text>
           <Text style={styles.descriptionText}>{followUp?.description} </Text>
         </View>
       </View>
