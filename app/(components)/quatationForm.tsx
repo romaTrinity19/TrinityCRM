@@ -1,25 +1,28 @@
+import { getServiceDetails, getUserDetails } from "@/components/utils/api";
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Picker } from "@react-native-picker/picker";
+import { DrawerNavigationProp } from "@react-navigation/drawer";
+import { useNavigation } from "@react-navigation/native";
+import axios from "axios";
+import { LinearGradient } from "expo-linear-gradient";
+import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
-  View,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
-  ScrollView,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  Modal,
+  View,
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { DrawerNavigationProp } from "@react-navigation/drawer";
-import { useNavigation } from "@react-navigation/native";
+import Toast from "react-native-toast-message";
 import { withDrawer } from "./drawer";
+import { ActivityIndicator } from "react-native";
 
 const themeColor = "#5975D9";
 
@@ -44,41 +47,24 @@ const QuotationForm = () => {
   const [serviceType, setServiceType] = useState("");
   const [charges, setCharges] = useState("");
   const [discount, setDiscount] = useState("");
+  const [notes, setNotes] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
   const [sameAsContact, setSameAsContact] = useState(false);
-
-  const customers = [
-    { label: "Select Customer", value: "" },
-    { label: "John Doe", value: "John Doe" },
-    { label: "Jane Smith", value: "Jane Smith" },
-    { label: "Acme Corp", value: "Acme Corp" },
-  ];
-
-  const serviceTypes = [
-    { label: "Select Service Type", value: "" },
-    { label: "Service Type1", value: "Service Type 1" },
-    { label: "Service Type2", value: "Service Type 2" },
-    { label: "Service Type3", value: "Service Type 3" },
-  ];
-
-  const addProduct = () => {
-    if (particular && serviceType && charges) {
-      const newProduct: Product = {
-        id: Date.now(),
-        particular,
-        serviceType,
-        charges: parseFloat(charges),
-      };
-      setProducts([...products, newProduct]);
-      setParticular("");
-      setServiceType("");
-      setCharges("");
-    }
-  };
+  const [customer, setCustomer] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [user, setUser] = useState<any>(null);
+  const [service, setService] = useState<any[]>([]);
+  const [editingProductId, setEditingProductId] = useState<number | null>(null);
+  const [savingQuotation, setSavingQuotation] = useState(false);
+  const [addingProduct, setAddingProduct] = useState(false);
 
   const totalAmount = products.reduce((sum, item) => sum + item.charges, 0);
   const discountAmount = parseFloat(discount) || 0;
   const netTotal = totalAmount - discountAmount;
+  const { id: _id, type: _type } = useLocalSearchParams();
+  const id = Array.isArray(_id) ? _id[0] : _id;
+  const type = Array.isArray(_type) ? _type[0] : _type;
 
   const formatDate = (date: Date): string => {
     return `${String(date.getDate()).padStart(2, "0")}/${String(
@@ -86,15 +72,308 @@ const QuotationForm = () => {
     ).padStart(2, "0")}/${date.getFullYear()}`;
   };
 
-  const removeProduct = (id: number) => {
-    setProducts(products.filter((item) => item.id !== id));
-  };
-
   useEffect(() => {
     if (sameAsContact) {
       setWhatsapp(contact);
     }
   }, [sameAsContact, contact]);
+
+  useEffect(() => {
+    if (user?.userid) {
+      fetchLeads();
+    }
+  }, [user]);
+
+  const fetchLeads = async () => {
+    try {
+      const response = await axios.get(
+        `http://crmclient.trinitysoftwares.in/crmAppApi/customerProfile.php?type=getAllCustomers&loginid=${user.userid}`
+      );
+
+      if (response.data.status === "success") {
+        const leads = response.data.customers;
+        setCustomer(leads);
+      } else {
+        setError("Failed to load leads");
+      }
+    } catch (err) {
+      console.error("❌ Error fetching leads:", err);
+      setError("Error fetching leads");
+    }
+  };
+
+  useEffect(() => {
+    const fetchUserIdAndDetails = async () => {
+      try {
+        const id = await AsyncStorage.getItem("userId");
+        if (id) {
+          const result = await getUserDetails(id);
+          if (result.success) {
+            setUser(result.user);
+          } else {
+            setError(result.message);
+          }
+        } else {
+          setError("No user ID found in storage.");
+        }
+      } catch (err: any) {
+        setError("Failed to load user data.");
+      }
+    };
+
+    fetchUserIdAndDetails();
+  }, []);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      const result = await getServiceDetails();
+      if (result.status === "success") {
+        setService(result.data);
+      } else {
+        console.error("Error:", result.message);
+      }
+      setLoading(false);
+    };
+
+    fetchServices();
+  }, []);
+
+  const handleSaveQuotation = async () => {
+    if (!selectedCustomer || !contact || !whatsapp || !quotationDate) {
+      Toast.show({ type: "error", text1: "Please fill all required fields." });
+      return;
+    }
+    if (products.length === 0) {
+      Toast.show({ type: "error", text1: "Please add at least one product." });
+      return;
+    }
+
+    try {
+      setSavingQuotation(true);
+      const payload = {
+        lead_id: selectedCustomer,
+        mobile_no: contact,
+        whatsapp_no: whatsapp,
+        billdate: quotationDate.toISOString().split("T")[0],
+        total: totalAmount.toFixed(2),
+        discount: discountAmount.toFixed(2),
+        net_amt: netTotal.toFixed(2),
+        other_note: notes,
+      };
+
+      if (type === "update" && id) {
+        const response = await axios.patch(
+          `http://crmclient.trinitysoftwares.in/crmAppApi/quatation.php?type=updateQuotation`,
+          { ...payload, bill_id: id },
+          { headers: { "Content-Type": "application/json" } }
+        );
+
+        if (response.data.status === "success") {
+          Toast.show({
+            type: "success",
+            text1: "Quotation updated successfully!",
+          });
+          router.push("/(components)/quatation");
+        } else {
+          Toast.show({
+            type: "error",
+            text1: response.data.message || "Failed to update",
+          });
+        }
+      } else {
+        // Create API (as before)
+        const response = await axios.post(
+          `http://crmclient.trinitysoftwares.in/crmAppApi/quatation.php?type=createQuotation&loginid=${user.userid}`,
+          payload,
+          { headers: { "Content-Type": "application/json" } }
+        );
+
+        if (response.data.status === "success") {
+          Toast.show({
+            type: "success",
+            text1: "Quotation created successfully!",
+          });
+          router.push("/(components)/quatation");
+          setProducts([]);
+        } else {
+          Toast.show({
+            type: "error",
+            text1: response.data.message || "Failed to create",
+          });
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Error saving quotation" });
+    } finally {
+      setSavingQuotation(false);
+    }
+  };
+
+  const addProduct = async () => {
+    if (!particular || !serviceType || !charges) {
+      Toast.show({ type: "error", text1: "All product fields are required." });
+      return;
+    }
+    setAddingProduct(true);
+    try {
+      const payload = {
+        particular: particular,
+        service_id: serviceType, // serviceType holds service_id
+        charges: charges,
+        type: "quotation", // Always quotation here
+      };
+
+      const response = await axios.post(
+        "http://crmclient.trinitysoftwares.in/crmAppApi/quatation.php?type=addProduct",
+        payload,
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      if (response.data.status === "success") {
+        const newProduct: Product = {
+          id: response.data.product_id,
+          particular,
+          serviceType,
+          charges: parseFloat(charges),
+        };
+        setProducts([...products, newProduct]);
+        setParticular("");
+        setServiceType("");
+        setCharges("");
+      } else {
+        Toast.show({ type: "error", text1: "Failed to add product" });
+      }
+    } catch (error) {
+      console.error(error);
+      Toast.show({ type: "error", text1: "Error adding product" });
+    } finally {
+      setAddingProduct(false);
+    }
+  };
+
+  const fetchDraftProductsByBillId = async (billId: string) => {
+    try {
+      const response = await axios.post(
+        "http://crmclient.trinitysoftwares.in/crmAppApi/quatation.php?type=fetchProducts",
+        { type: "quotation", bill_id: billId }, // Pass bill_id here
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      if (response.data.status === "success") {
+        const productList = response.data.products.map((item: any) => ({
+          id: item.billing_details_id,
+          particular: item.particular,
+          serviceType: item.service_id,
+          charges: parseFloat(item.charges),
+        }));
+        setProducts(productList);
+      }
+    } catch (error) {
+      console.error("Failed to fetch products by bill_id:", error);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.userid) {
+      fetchLeads();
+    }
+  }, [user]);
+
+  const editProduct = (product: any) => {
+    setParticular(product.particular);
+    setServiceType(product.serviceType);
+    setCharges(product.charges.toString());
+    setEditingProductId(product.id);
+  };
+
+  const updateProduct = async () => {
+    if (!editingProductId) return;
+
+    try {
+      const payload = {
+        billing_details_id: editingProductId,
+        type: "quotation",
+        particular: particular,
+        service_id: serviceType,
+        charges: parseFloat(charges),
+      };
+
+      const response = await axios.patch(
+        "http://crmclient.trinitysoftwares.in/crmAppApi/quatation.php?type=updateProduct",
+        payload,
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      if (response.data.status === "success") {
+        alert("Product updated successfully");
+        // Refresh product list after update
+        const billId = type === "update" && id ? id : "0";
+        fetchDraftProductsByBillId(billId);
+
+        setParticular("");
+        setServiceType("");
+        setCharges("");
+        setEditingProductId(null);
+      } else {
+        alert(response.data.message);
+      }
+    } catch (error) {
+      console.error("Failed to update product:", error);
+    }
+  };
+
+  const removeProduct = async (id: any) => {
+    try {
+      const response = await axios.delete(
+        "http://crmclient.trinitysoftwares.in/crmAppApi/quatation.php?type=deleteProduct",
+        {
+          data: { billing_details_id: id },
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (response.data.status === "success") {
+        alert("Product deleted");
+        setProducts(products.filter((item) => item.id !== id));
+      } else {
+        alert(response.data.message);
+      }
+    } catch (error) {
+      console.error("Failed to delete product:", error);
+    }
+  };
+
+  useEffect(() => {
+    const fetchQuotationById = async () => {
+      try {
+        const response = await axios.get(
+          `http://crmclient.trinitysoftwares.in/crmAppApi/quatation.php?type=getQuotationById&bill_id=${id}`
+        );
+
+        if (response.data.status === "success") {
+          const q = response.data.quotation;
+          setSelectedCustomer(q.lead_id);
+          setContact(q.mobile_no);
+          setWhatsapp(q.whatsapp_no);
+          setQuotationDate(new Date(q.billdate));
+          setDiscount(q.discount);
+          setNotes(q.other_note);
+        } else {
+          console.log("Quotation not found");
+        }
+      } catch (err) {
+        console.error("Error fetching quotation:", err);
+      }
+    };
+
+    const billId = type === "update" && id ? id : "0";
+    fetchDraftProductsByBillId(billId);
+
+    if (type === "update" && id) {
+      fetchQuotationById();
+    }
+  }, [id, type]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f2f6ff" }}>
@@ -138,14 +417,27 @@ const QuotationForm = () => {
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={selectedCustomer}
-                onValueChange={(itemValue) => setSelectedCustomer(itemValue)}
+                onValueChange={(itemValue) => {
+                  setSelectedCustomer(itemValue);
+                  const selected = customer.find(
+                    (cust) => cust.lead_id === itemValue
+                  );
+                  if (selected) {
+                    setContact(selected.contact_no);
+                    setWhatsapp(selected.whatsapp_no);
+                  } else {
+                    setContact("");
+                    setWhatsapp("");
+                  }
+                }}
                 style={styles.picker}
               >
-                {customers.map((item) => (
+                <Picker.Item label="---Select Customer---" value="" />
+                {customer.map((cust) => (
                   <Picker.Item
-                    key={item.value}
-                    label={item.label}
-                    value={item.value}
+                    key={cust.lead_id}
+                    label={`${cust.name || "N/A"} / 000${cust.lead_id}`}
+                    value={cust.lead_id}
                   />
                 ))}
               </Picker>
@@ -204,14 +496,6 @@ const QuotationForm = () => {
             />
 
             {/* Quotation Number */}
-            <Text style={styles.label}>
-              Quotation Number <Text style={styles.required}>*</Text>
-            </Text>
-            <TextInput
-              style={[styles.inputFull, { backgroundColor: "#eaeaea" }]}
-              value="2024-25/QU000003"
-              editable={false}
-            />
 
             {/* Date Picker */}
             <Text style={styles.label}>
@@ -221,9 +505,7 @@ const QuotationForm = () => {
               onPress={() => setShowDatePicker(true)}
               style={styles.inputFull}
             >
-              <Text style={{ color: "#333" }}>
-                Quotation Date: {formatDate(quotationDate)}
-              </Text>
+              <Text style={{ color: "#333" }}>{formatDate(quotationDate)}</Text>
             </TouchableOpacity>
             {showDatePicker && (
               <DateTimePicker
@@ -263,11 +545,12 @@ const QuotationForm = () => {
                 onValueChange={(itemValue) => setServiceType(itemValue)}
                 style={styles.picker}
               >
-                {serviceTypes.map((item) => (
+                <Picker.Item label="---Select Service Type---" value="" />
+                {service?.map((cust) => (
                   <Picker.Item
-                    key={item.value}
-                    label={item.label}
-                    value={item.value}
+                    key={cust.service_id}
+                    label={`${cust.service_name} [${cust.service_days} Days] `}
+                    value={cust.service_id}
                   />
                 ))}
               </Picker>
@@ -280,11 +563,21 @@ const QuotationForm = () => {
               value={charges}
               onChangeText={setCharges}
             />
-            <TouchableOpacity style={styles.addButton} onPress={addProduct}>
-              <Text style={styles.addBtnText}>+ Add Product</Text>
+            <TouchableOpacity
+              style={[styles.addButton, addingProduct && { opacity: 0.7 }]}
+              onPress={editingProductId ? updateProduct : addProduct}
+              disabled={addingProduct}
+            >
+              {addingProduct ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.addBtnText}>
+                  {editingProductId ? "Update Product" : "+ Add Product"}
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
-
+ 
           {/* Product List */}
           {products.length > 0 && (
             <View style={{ marginTop: 20 }}>
@@ -296,18 +589,36 @@ const QuotationForm = () => {
                       {index + 1}. {item.particular}
                     </Text>
                     <Text style={styles.cardSubtitle}>
-                      Service: {item.serviceType}
+                      Service:{" "}
+                      {service.find((s) => s.service_id == item.serviceType)
+                        ?.service_name || item.serviceType}
                     </Text>
                     <Text style={styles.cardAmount}>
                       Charges: ₹{item.charges.toFixed(2)}
                     </Text>
                   </View>
-                  <TouchableOpacity
-                    onPress={() => removeProduct(item.id)}
-                    style={styles.deleteBtn}
-                  >
-                    <Text style={styles.deleteText}>✕</Text>
-                  </TouchableOpacity>
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                      onPress={() => editProduct(item)}
+                      style={styles.editBtn}
+                    >
+                      <Ionicons
+                        name="create-outline"
+                        size={18}
+                        color="#4B65E9"
+                      />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => removeProduct(item.id)}
+                      style={styles.deleteBtn}
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={18}
+                        color="#e74c3c"
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               ))}
             </View>
@@ -331,12 +642,22 @@ const QuotationForm = () => {
             multiline
             textAlignVertical="top"
             placeholder="Enter notes"
+            value={notes}
+            onChangeText={setNotes}
           />
 
           {/* Buttons */}
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.saveBtn}>
-              <Text style={styles.btnText}>Save</Text>
+            <TouchableOpacity
+              style={[styles.saveBtn, savingQuotation && { opacity: 0.7 }]}
+              onPress={handleSaveQuotation}
+              disabled={savingQuotation}
+            >
+              {savingQuotation ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.btnText}>Save</Text>
+              )}
             </TouchableOpacity>
             <TouchableOpacity style={styles.resetBtn}>
               <Text style={styles.btnText}>Reset</Text>
@@ -486,17 +807,38 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
-  deleteBtn: {
-    padding: 6,
-    backgroundColor: "#ffe6e6",
-    borderRadius: 20,
+  actionButtons: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-end",
+  },
+
+  editBtn: {
+    padding: 8,
+    backgroundColor: "#eaf0ff",
+    borderRadius: 50,
+    marginRight: 8,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+
+  deleteBtn: {
+    padding: 8,
+    backgroundColor: "#ffecec",
+    borderRadius: 50,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
 
   deleteText: {
     fontSize: 16,
     color: "#e74c3c",
     fontWeight: "bold",
-  },
+  }, // This can be removed as we’re using icon now.
 });

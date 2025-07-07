@@ -211,3 +211,21 @@ export const getMimeType = (filename: string): string => {
   }
 };
 
+
+export const getServiceDetails = async () => {
+  try {
+    const response = await fetch("http://crmclient.trinitysoftwares.in/crmAppApi/quatation.php?type=getServiceDetails", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const result = await response.json();
+    return result;  
+  } catch (error) {
+    console.error("Failed to fetch state details:", error);
+    return { status: "error", message: "Network error" };
+  }
+};
+

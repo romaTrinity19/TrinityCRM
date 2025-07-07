@@ -14,6 +14,7 @@ import {
   FlatList,
   Linking,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -23,6 +24,7 @@ import {
 import { Button, Card, IconButton, Text } from "react-native-paper";
 import Toast from "react-native-toast-message";
 import { withDrawer } from "../(components)/drawer";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 type RootDrawerParamList = {
   Dashboard: undefined;
@@ -49,7 +51,7 @@ function NewLeadsScreen() {
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [leads, setLeads] = useState<any[]>([]);
   const [error, setError] = useState("");
   const [user, setUser] = useState<any>(null);
 
@@ -57,13 +59,19 @@ function NewLeadsScreen() {
     useState(false);
 
   const [filterData, setFilterData] = useState({
-    agent: "",
-    user: "",
-    state: "",
+    lead: "",
   });
+  const formatDate = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
-  const agents = ["Agent", "Agent A", "Agent B", "Agent C"];
-  const users = ["User", "User X", "User Y", "User Z"];
+  const [fromDate, setFromDate] = useState<Date | null>(null);
+  const [toDate, setToDate] = useState<Date | null>(null);
+  const [showFromPicker, setShowFromPicker] = useState(false);
+  const [showToPicker, setShowToPicker] = useState(false);
   const states = ["State", "Madhya Pradesh", "Maharashtra", "Rajasthan"];
 
   const filteredLeads = opportunities?.filter((lead: any) =>
@@ -294,6 +302,79 @@ function NewLeadsScreen() {
     fetchUserIdAndOpportunities();
   }, []);
 
+  const applyFilter = async () => {
+    try {
+      setLoading(true);
+
+      const payload: any = {
+        lead_id: filterData.lead,
+      };
+
+      if (fromDate) {
+        payload.from_date = fromDate.toISOString().split("T")[0];
+      }
+      if (toDate) {
+        payload.to_date = toDate.toISOString().split("T")[0];
+      }
+
+      const response = await axios.post(
+        "http://crmclient.trinitysoftwares.in/crmAppApi/opportunity1.php?type=getFilteredOpportunity",
+        payload,
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (response.data.status === "success") {
+        setOpportunities(response.data.opportunities);
+        setFilterModalVisible(false);
+      } else {
+        setError("Failed to filter leads");
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "No data found for selected filters",
+        });
+      }
+    } catch (error) {
+      console.error("❌ Error filtering leads:", error);
+      setError("Error filtering leads");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Something went wrong while applying filters",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.userid) {
+      fetchLeads();
+    }
+  }, [user]);
+
+  const fetchLeads = async () => {
+    try {
+      const response = await axios.get(
+        `http://crmclient.trinitysoftwares.in/crmAppApi/leads.php?type=getAllLeads&loginid=${user.userid}`
+      );
+
+      if (response.data.status === "success") {
+        const leads = response.data.leads;
+        setLeads(leads);
+      } else {
+        setError("Failed to load leads");
+      }
+    } catch (err) {
+      console.error("❌ Error fetching leads:", err);
+      setError("Error fetching leads");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -358,50 +439,69 @@ function NewLeadsScreen() {
 
             <Text style={styles.modalTitle}>Apply Filters</Text>
 
-            {/* Agent Picker */}
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={filterData.agent}
-                onValueChange={(itemValue) =>
-                  setFilterData({ ...filterData, agent: itemValue })
-                }
-                style={{ padding: 0, margin: -5 }}
-              >
-                {agents.map((a) => (
-                  <Picker.Item key={a} label={a || "Select Agent"} value={a} />
-                ))}
-              </Picker>
-            </View>
-
-            {/* User Picker */}
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={filterData.user}
-                onValueChange={(itemValue) =>
-                  setFilterData({ ...filterData, user: itemValue })
-                }
-                style={{ padding: 0, margin: -5 }}
-              >
-                {users.map((u) => (
-                  <Picker.Item key={u} label={u || "Select User"} value={u} />
-                ))}
-              </Picker>
-            </View>
-
             {/* State Picker */}
+            <Text style={styles.dateLabel}>Lead</Text>
             <View style={styles.pickerWrapper}>
               <Picker
-                selectedValue={filterData.state}
+                selectedValue={filterData.lead}
                 onValueChange={(itemValue) =>
-                  setFilterData({ ...filterData, state: itemValue })
+                  setFilterData({ ...filterData, lead: itemValue })
                 }
                 style={{ padding: 0, margin: -5 }}
               >
-                {states.map((s) => (
-                  <Picker.Item key={s} label={s || "Select State"} value={s} />
+                <Picker.Item label="-- Select Lead --" value="" />
+                {leads?.map((item: any) => (
+                  <Picker.Item
+                    key={item?.lead_id}
+                    label={`${item?.name}/${item?.lead_id}`}
+                    value={item?.lead_id}
+                  />
                 ))}
               </Picker>
             </View>
+            {/* From Date Picker */}
+            <Text style={styles.dateLabel}>From Date</Text>
+            <TouchableOpacity
+              onPress={() => setShowFromPicker(true)}
+              style={styles.dateField}
+            >
+              <Text style={styles.dateValue}>
+                {fromDate ? formatDate(fromDate) : "Select Date"}
+              </Text>
+            </TouchableOpacity>
+            <Text style={styles.dateLabel}>To Date</Text>
+            {/* To Date Picker */}
+            <TouchableOpacity
+              onPress={() => setShowToPicker(true)}
+              style={styles.dateField}
+            >
+              <Text style={styles.dateValue}>
+                {toDate ? formatDate(toDate) : "Select Date"}
+              </Text>
+            </TouchableOpacity>
+            {showFromPicker && (
+              <DateTimePicker
+                value={fromDate || new Date()}
+                mode="date"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShowFromPicker(Platform.OS === "ios");
+                  if (selectedDate) setFromDate(selectedDate);
+                }}
+              />
+            )}
+
+            {showToPicker && (
+              <DateTimePicker
+                value={toDate || new Date()}
+                mode="date"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShowToPicker(Platform.OS === "ios");
+                  if (selectedDate) setToDate(selectedDate);
+                }}
+              />
+            )}
 
             {/* Buttons */}
             <View style={styles.filterButtonsRow}>
@@ -409,7 +509,7 @@ function NewLeadsScreen() {
                 mode="contained"
                 style={styles.searchBtn}
                 onPress={() => {
-                  // TODO: Apply filter logic
+                  applyFilter();
                   setFilterModalVisible(false);
                 }}
               >
@@ -419,7 +519,9 @@ function NewLeadsScreen() {
                 mode="outlined"
                 style={styles.resetBtn}
                 onPress={() => {
-                  setFilterData({ agent: "", user: "", state: "" });
+                  setFilterData({ lead: "" });
+                  setFromDate(null);
+                  setToDate(null);
                 }}
               >
                 Reset
@@ -456,7 +558,6 @@ function NewLeadsScreen() {
                 style={[styles.confirmBtn, { backgroundColor: "#d9534f" }]}
                 onPress={() => {
                   if (leadToDelete) {
-           
                     deleteOportunity(leadToDelete);
                     setDeleteModalVisible(false);
                     setLeadToDelete(null);
@@ -808,5 +909,23 @@ const styles = StyleSheet.create({
   confirmBtnText: {
     color: "#fff",
     fontWeight: "bold",
+  },
+  dateField: {
+    backgroundColor: "#f0f0ff",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 0.5,
+    borderColor: "#4B65E9",
+  },
+  dateLabel: {
+    fontSize: 14,
+    color: "#444",
+    fontWeight: "600",
+  },
+  dateValue: {
+    fontSize: 16,
+
+    marginTop: 4,
   },
 });

@@ -24,6 +24,9 @@ import { Button, Card } from "react-native-paper";
 import Toast from "react-native-toast-message";
 import { withDrawer } from "./drawer";
 import { ActivityIndicator } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getUserDetails } from "@/components/utils/api";
+import axios from "axios";
 
 type RootDrawerParamList = {
   Dashboard: undefined;
@@ -38,16 +41,15 @@ function ReminderScreen() {
 
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [filterData, setFilterData] = useState({
-    agent: "",
-    user: "",
-    state: "",
+    opp: "",
   });
 
   const [followUps, setFollowUps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [fromDate, setFromDate] = useState(new Date());
-  const [toDate, setToDate] = useState(new Date());
+   const [user, setUser] = useState<any>(null);
+  const [opportunities, setOpportunities] = useState<any[]>([]);
+  const [fromDate, setFromDate] = useState<Date | null>(null);
+  const [toDate, setToDate] = useState<Date | null>(null);
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
   const formatDate = (date: Date) => {
@@ -57,14 +59,8 @@ function ReminderScreen() {
     return `${day}/${month}/${year}`;
   };
 
-  const agents = ["--- select ---", "Agent A", "Agent B", "Agent C"];
-  const users = ["--- select ---", "User X", "User Y", "User Z"];
-  const states = [
-    "--- select ---",
-    "Madhya Pradesh",
-    "Maharashtra",
-    "Rajasthan",
-  ];
+  
+  const [error, setError] = useState("");
 
   const filteredReminders = followUps?.filter((item) =>
     item.lead_name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -103,7 +99,7 @@ function ReminderScreen() {
               onPress: () => {
                 setMenuVisible(false);
                 router.push({
-                  pathname: "/(pages)/newLeads",
+                  pathname: "/(components)/followUp",
                   params: { type: "update", id: item.followup_id },
                 });
               },
@@ -198,7 +194,89 @@ function ReminderScreen() {
     }
   };
 
-  if (loading && !followUps) {
+  useEffect(() => {
+    if (user?.userid) fetchOpportunities(user?.userid);
+  }, [user]);
+  const fetchOpportunities = async (userId: string) => {
+    try {
+      const response = await fetch(
+        `http://crmclient.trinitysoftwares.in/crmAppApi/opportunity1.php?type=getAllOpportunity&loginid=${userId}`
+      );
+      const json = await response.json();
+      if (json.status === "success") setOpportunities(json.opportunities);
+      else setError(json.message || "Error fetching opportunities.");
+    } catch {
+      setError("Something went wrong while loading opportunities.");
+    }
+  };
+
+  const fetchUserIdAndDetails = async () => {
+    try {
+      const id = await AsyncStorage.getItem("userId");
+      if (id) {
+        const result = await getUserDetails(id);
+        if (result.success) setUser(result.user);
+        else setError(result.message);
+      } else {
+        setError("No user ID found in storage.");
+      }
+    } catch {
+      setError("Failed to load user data.");
+    }
+  };
+
+  useEffect(() => {
+    fetchUserIdAndDetails();
+  }, []);
+
+  const applyFilter = async () => {
+    try {
+      setLoading(true);
+
+      const payload: any = {
+        opp_create_id: filterData.opp,
+      };
+
+      if (fromDate) {
+        payload.from_date = fromDate.toISOString().split("T")[0];
+      }
+      if (toDate) {
+        payload.to_date = toDate.toISOString().split("T")[0];
+      }
+
+      const response = await axios.post(
+        "http://crmclient.trinitysoftwares.in/crmAppApi/followUp.php?type=getFilteredFollowUps",
+        payload,
+        {
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (response.data.status === "success") {
+        setFollowUps(response.data.data);
+        setFilterModalVisible(false);
+      } else {
+        setError("Failed to filter leads");
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "No data found for selected filters",
+        });
+      }
+    } catch (error) {
+      console.error("❌ Error filtering leads:", error);
+      setError("Error filtering leads");
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Something went wrong while applying filters",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#5975D9" />
@@ -255,51 +333,22 @@ function ReminderScreen() {
             </TouchableOpacity>
 
             <Text style={styles.modalTitle}>Apply Filters</Text>
-
-            {/* Agent Picker */}
-            <Text style={styles.dateLabel}>Agent</Text>
+            <Text style={styles.dateLabel}>Select Lead/Opportunity </Text>
             <View style={styles.pickerWrapper}>
               <Picker
-                selectedValue={filterData.agent}
+                selectedValue={filterData.opp}
                 onValueChange={(itemValue) =>
-                  setFilterData({ ...filterData, agent: itemValue })
+                  setFilterData({ ...filterData, opp: itemValue })
                 }
                 style={{ padding: 0, margin: -5 }}
               >
-                {agents.map((a) => (
-                  <Picker.Item key={a} label={a || "Select Agent"} value={a} />
-                ))}
-              </Picker>
-            </View>
-
-            {/* User Picker */}
-            <Text style={styles.dateLabel}>User</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={filterData.user}
-                onValueChange={(itemValue) =>
-                  setFilterData({ ...filterData, user: itemValue })
-                }
-                style={{ padding: 0, margin: -5 }}
-              >
-                {users.map((u) => (
-                  <Picker.Item key={u} label={u || "Select User"} value={u} />
-                ))}
-              </Picker>
-            </View>
-
-            {/* State Picker */}
-            <Text style={styles.dateLabel}>State</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={filterData.state}
-                onValueChange={(itemValue) =>
-                  setFilterData({ ...filterData, state: itemValue })
-                }
-                style={{ padding: 0, margin: -5 }}
-              >
-                {states.map((s) => (
-                  <Picker.Item key={s} label={s || "Select State"} value={s} />
+                <Picker.Item label="---Select Opportunity---" value="" />
+                {opportunities.map((opp) => (
+                  <Picker.Item
+                    key={opp.opp_create_id}
+                    label={`${opp.name || "N/A"} / ${opp.opportunity_name}`}
+                    value={opp.opp_create_id}
+                  />
                 ))}
               </Picker>
             </View>
@@ -309,7 +358,10 @@ function ReminderScreen() {
               onPress={() => setShowFromPicker(true)}
               style={styles.dateField}
             >
-              <Text style={styles.dateValue}>{formatDate(fromDate)}</Text>
+              <Text style={styles.dateValue}>
+                {" "}
+                {fromDate ? formatDate(fromDate) : "Select Date"}
+              </Text>
             </TouchableOpacity>
             <Text style={styles.dateLabel}>To Date</Text>
             {/* To Date Picker */}
@@ -317,11 +369,14 @@ function ReminderScreen() {
               onPress={() => setShowToPicker(true)}
               style={styles.dateField}
             >
-              <Text style={styles.dateValue}>{formatDate(toDate)}</Text>
+              <Text style={styles.dateValue}>
+                {" "}
+                {toDate ? formatDate(toDate) : "Select Date"}
+              </Text>
             </TouchableOpacity>
             {showFromPicker && (
               <DateTimePicker
-                value={fromDate}
+                value={fromDate || new Date()}
                 mode="date"
                 display="default"
                 onChange={(event, selectedDate) => {
@@ -333,7 +388,7 @@ function ReminderScreen() {
 
             {showToPicker && (
               <DateTimePicker
-                value={toDate}
+                value={toDate || new Date()}
                 mode="date"
                 display="default"
                 onChange={(event, selectedDate) => {
@@ -350,6 +405,7 @@ function ReminderScreen() {
                 style={styles.searchBtn}
                 onPress={() => {
                   // TODO: Apply filter logic
+                  applyFilter();
                   setFilterModalVisible(false);
                 }}
               >
@@ -359,7 +415,9 @@ function ReminderScreen() {
                 mode="outlined"
                 style={styles.resetBtn}
                 onPress={() => {
-                  setFilterData({ agent: "", user: "", state: "" });
+                  setFilterData({ opp: "" });
+                  setFromDate(null);
+                  setToDate(null);
                 }}
               >
                 Reset
@@ -374,9 +432,7 @@ function ReminderScreen() {
           keyExtractor={(item) => item.followup_id}
           renderItem={({ item }) => (
             <Card style={styles.card}>
-              <TouchableOpacity
-                onPress={() => router.push("/(components)/followUpUserDetails")}
-              >
+              <TouchableOpacity>
                 <View style={styles.cardHeader}>
                   <View style={styles.iconTitleWrapper}>
                     <FontAwesome5
@@ -407,7 +463,34 @@ function ReminderScreen() {
                   <Text style={styles.cardLabel}>Follow Up Time</Text>
                   <Text style={styles.cardValue}>{item.followup_time}</Text>
                 </View>
+                <View style={styles.cardDetailRow}>
+                  <Ionicons
+                    name="person-circle-outline"
+                    size={16}
+                    color="#4B65E9"
+                  />
+                  <Text style={styles.cardLabel}>Created By</Text>
+                  <Text
+                    style={[styles.cardValue, { flex: 1 }]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {item.created_by}
+                  </Text>
+                </View>
+                <View style={styles.cardDetailRow}>
+                  <FontAwesome5 name="handshake" size={16} color="#4B65E9" />
+                  <Text style={styles.cardLabel}>Opportunity</Text>
+                  <Text
+                    style={[styles.cardValue, { flex: 1 }]}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {item.opportunity_name}
+                  </Text>
+                </View>
               </TouchableOpacity>
+
               {renderMenu(item)}
             </Card>
           )}
@@ -576,12 +659,13 @@ const styles = StyleSheet.create({
     color: "#4B65E9",
     fontWeight: "600",
     marginLeft: 6,
-    flex: 1,
+    width: "40%",
   },
   cardValue: {
     color: "#222",
     fontWeight: "500",
     fontSize: 14,
+    width: "60%",
   },
 
   menuItemRow: {

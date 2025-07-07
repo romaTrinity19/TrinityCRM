@@ -60,13 +60,13 @@ function NewLeadsScreen() {
   const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const [filterModalVisible, setFilterModalVisible] = useState(false);
+ 
   const [filterData, setFilterData] = useState({
     agent: "",
     user: "",
     state: "",
   });
-
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [fromDate, setFromDate] = useState(new Date());
   const [toDate, setToDate] = useState(new Date());
   const [showFromPicker, setShowFromPicker] = useState(false);
@@ -77,7 +77,6 @@ function NewLeadsScreen() {
   const [error, setError] = useState("");
   const [user, setUser] = useState<any>(null);
 
-  // Filter leads based on search query (case-insensitive)
   const filteredLeads = leadss?.filter((lead: any) =>
     lead.name.toLowerCase().includes(searchQuery.toLowerCase())
   );

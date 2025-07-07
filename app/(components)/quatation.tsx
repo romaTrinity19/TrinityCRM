@@ -1,12 +1,22 @@
+import { getUserDetails } from "@/components/utils/api";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Picker } from "@react-native-picker/picker";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { useNavigation } from "@react-navigation/native";
+import axios from "axios";
+import * as FileSystem from "expo-file-system";
+import * as IntentLauncher from "expo-intent-launcher";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
+  Linking,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -14,59 +24,28 @@ import {
   View,
 } from "react-native";
 import { Button, Card, IconButton, Text } from "react-native-paper";
+import Toast from "react-native-toast-message";
 import { withDrawer } from "./drawer";
-import { Picker } from "@react-native-picker/picker";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { Platform } from "react-native";
 
-const leads = [
-  {
-    id: "1",
-    name: " Kush Bhaiya",
-    service: "Stock Management App",
-    phone: "9131563996, 9131563996",
-    amount: "₹10,000",
-    date: "14th May 2025",
-    email: "example@gmail.com",
-  },
-  {
-    id: "2",
-    name: "  Ravish Talreja",
-    service: "Social Media and digital",
-    phone: "9981515000, 9981515000",
-    date: "14th May 2025",
-    email: "example@gmail.com",
-  },
-  {
-    id: "3",
-    name: "  Amit Ji Jain Traders",
-    service: "Lable prinintg software",
-    phone: "9827138487, 9827138487",
-    date: "14th May 2025",
-    email: "example@gmail.com",
-  },
-  {
-    id: "4",
-    name: "  Manoj Borker",
-    service: "Website",
-    phone: "",
-    date: "",
-  },
-];
 type RootDrawerParamList = {
   Dashboard: undefined;
   Qualification: undefined;
   Quatation: undefined;
 };
+
 function Quatation() {
   const navigation = useNavigation<DrawerNavigationProp<RootDrawerParamList>>();
   const [searchQuery, setSearchQuery] = useState("");
-
+  const [quotations, setQuotations] = useState<any[]>([]);
+  const [netAmount, setNetAmount] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [user, setUser] = useState<any>(null);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [userLoading, setUserLoading] = useState(true);
+  const [customer, setCustomer] = useState<any[]>([]);
   const [filterData, setFilterData] = useState({
-    agent: "",
     user: "",
-    state: "",
   });
   const formatDate = (date: Date) => {
     const day = String(date.getDate()).padStart(2, "0");
@@ -81,37 +60,32 @@ function Quatation() {
   const [showToPicker, setShowToPicker] = useState(false);
   const [createCustomerModalVisible, setCreateCustomerModalVisible] =
     useState(false);
-
-  const Customer = ["--- select ---", "Customer A", "Customer B", "Customer C"];
-  
-  const filteredLeads = leads.filter((lead) =>
-    lead.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredQuotations = searchQuery
+    ? quotations.filter((q) =>
+        q.customer_name?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : quotations;
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
+
   const menuItems = [
-    { label: "View", route: "/(components)/quatationDetails", emoji: "👁️" },
-    { label: "Print", route: "/(pages)/newLeads", emoji: "🖨️" },
-    {
-      label: "Create Invoice",
-      modal: "createInvoice",
-      emoji: "📑",
-    },
-    { label: "Edit", route: "/(pages)/newLeads", emoji: "✏️" },
-    {
-      label: "WhatsApp Chat",
-      route: "/(pages)/message",
-      emoji: "💬",
-    },
-    { label: "Call", route: "CallScreen", emoji: "📞" },
-    { label: "Delete", route: "/(pages)/message", emoji: "🗑️" },
+    { label: "View", action: "view", emoji: "👁️" },
+    { label: "Download", action: "download", emoji: "📥" },
+    { label: "Create Invoice", modal: "createInvoice", emoji: "📑" },
+    { label: "Edit", action: "edit", emoji: "✏️" },
+    { label: "WhatsApp Chat", action: "whatsapp", emoji: "💬" },
+    { label: "Call", action: "call", emoji: "📞" },
+    { label: "Delete", action: "delete", emoji: "🗑️" },
   ];
+
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [quotationToDelete, setQuotationToDelete] = useState<any>(null);
 
   const renderMenu = (item: any) => (
     <Modal
       transparent={true}
-      visible={selectedItem === item.id && menuVisible}
+      visible={selectedItem === item.bill_id && menuVisible}
       animationType="fade"
       onRequestClose={() => setMenuVisible(false)}
     >
@@ -127,10 +101,28 @@ function Quatation() {
               activeOpacity={0.7}
               onPress={() => {
                 setMenuVisible(false);
+
                 if (menuItem.modal === "createInvoice") {
                   setCreateCustomerModalVisible(true);
-                } else if (menuItem.route) {
-                  router.push(menuItem.route as any);
+                } else if (menuItem.action === "view") {
+                  router.push({
+                    pathname: "/(components)/quatationDetails",
+                    params: { id: item.bill_id },
+                  });
+                } else if (menuItem.action === "download") {
+                  downloadPDF(item.bill_id);
+                } else if (menuItem.action === "edit") {
+                  router.push({
+                    pathname: "/(components)/quatationForm",
+                    params: { id: item.bill_id, type: "update" },
+                  });
+                } else if (menuItem.action === "whatsapp") {
+                  Linking.openURL(`whatsapp://send?phone=${item.whatsapp_no}`);
+                } else if (menuItem.action === "call") {
+                  Linking.openURL(`tel:${item.mobile_no}`);
+                } else if (menuItem.action === "delete") {
+                  setQuotationToDelete(item);
+                  setDeleteConfirmVisible(true);
                 }
               }}
             >
@@ -142,6 +134,78 @@ function Quatation() {
           ))}
         </View>
       </Pressable>
+    </Modal>
+  );
+
+  const handleDeleteQuotation = async () => {
+    if (!quotationToDelete) return;
+
+    try {
+      const response = await axios.delete(
+        "http://crmclient.trinitysoftwares.in/crmAppApi/quatation.php?type=deleteQuotation",
+        {
+          data: { bill_id: quotationToDelete.bill_id },
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (response.data.status === "success") {
+        Toast.show({
+          type: "success",
+          text1: "Deleted successfully",
+        });
+        // Remove from state
+        setQuotations((prev) =>
+          prev.filter((q) => q.bill_id !== quotationToDelete.bill_id)
+        );
+      } else {
+        Toast.show({
+          type: "error",
+          text1: response.data.message || "Delete failed",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      Toast.show({
+        type: "error",
+        text1: "Error deleting quotation",
+      });
+    } finally {
+      setDeleteConfirmVisible(false);
+      setQuotationToDelete(null);
+    }
+  };
+
+  const DeleteConfirmModal = () => (
+    <Modal
+      visible={deleteConfirmVisible}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setDeleteConfirmVisible(false)}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.alertBox}>
+          <Text style={styles.alertIcon}>⚠️</Text>
+          <Text style={styles.alertTitle}>Confirm Delete</Text>
+          <Text style={styles.alertMessage}>
+            Are you sure you want to delete this quotation?
+          </Text>
+          <View style={styles.alertButtons}>
+            <TouchableOpacity
+              style={[styles.alertButton, { backgroundColor: "#e74c3c" }]}
+              onPress={handleDeleteQuotation}
+            >
+              <Text style={styles.alertButtonText}>Delete</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.alertButton, { backgroundColor: "#4b3ba9" }]}
+              onPress={() => setDeleteConfirmVisible(false)}
+            >
+              <Text style={styles.alertButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
     </Modal>
   );
 
@@ -180,6 +244,134 @@ function Quatation() {
       </View>
     </Modal>
   );
+
+  const fetchQuotations = async () => {
+    if (!user?.userid) return;
+    try {
+      setLoading(true);
+      const response = await axios.get(
+        "http://crmclient.trinitysoftwares.in/crmAppApi/quatation.php",
+        {
+          params: {
+            type: "getAllQuotationDetails",
+            loginid: user.userid,
+          },
+        }
+      );
+
+      if (response.data.status === "success") {
+        setNetAmount(response.data.total_net_amt);
+        setQuotations(response.data.quotations);
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Failed to load quotations",
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      Toast.show({
+        type: "error",
+        text1: "Error fetching data",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const fetchUserIdAndDetails = async () => {
+      setLoading(true);
+      try {
+        const id = await AsyncStorage.getItem("userId");
+        if (id) {
+          const result = await getUserDetails(id);
+          if (result.success) setUser(result.user);
+          else setError(result.message);
+        } else {
+          setError("No user ID found in storage.");
+        }
+      } catch {
+        setError("Failed to load user data.");
+      } finally {
+        setUserLoading(false);
+      }
+    };
+
+    fetchUserIdAndDetails();
+  }, []);
+
+  useEffect(() => {
+    if (user?.userid) {
+      fetchQuotations();
+    }
+  }, [user]);
+
+  const downloadPDF = async (billId: string) => {
+    try {
+      const downloadUrl = `http://crmclient.trinitysoftwares.in/admin/pdf_quotation.php?bill_id=${billId}`;
+      const fileUri = FileSystem.documentDirectory + `quotation_${billId}.pdf`;
+
+      const downloadResumable = FileSystem.createDownloadResumable(
+        downloadUrl,
+        fileUri
+      );
+
+      const result = await downloadResumable.downloadAsync();
+
+      if (result && result.uri) {
+        const cUri = await FileSystem.getContentUriAsync(result.uri);
+        IntentLauncher.startActivityAsync("android.intent.action.VIEW", {
+          data: cUri,
+          flags: 1,
+          type: "application/pdf",
+        });
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Failed to download PDF.",
+        });
+      }
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      Toast.show({
+        type: "error",
+        text1: "Failed to download PDF.",
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (user?.userid) {
+      fetchCustomer();
+    }
+  }, [user]);
+
+  const fetchCustomer = async () => {
+    try {
+      const response = await axios.get(
+        `http://crmclient.trinitysoftwares.in/crmAppApi/customerProfile.php?type=getAllCustomers&loginid=${user.userid}`
+      );
+
+      if (response.data.status === "success") {
+        const leads = response.data.customers;
+        setCustomer(leads);
+      } else {
+        setError("Failed to load leads");
+      }
+    } catch (err) {
+      console.error("❌ Error fetching leads:", err);
+      setError("Error fetching leads");
+    }
+  };
+
+  if (userLoading || loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#5975D9" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -245,12 +437,17 @@ function Quatation() {
                 }
                 style={{ padding: 0, margin: -5 }}
               >
-                {Customer.map((u) => (
-                  <Picker.Item key={u} label={u || "Select Customer"} value={u} />
+                <Picker.Item label="--- Select Customer ---" value="" />
+                {customer.map((cust) => (
+                  <Picker.Item
+                    key={cust.lead_id}
+                    label={cust.name}
+                    value={cust.lead_id}
+                  />
                 ))}
               </Picker>
             </View>
-         
+
             {/* From Date Picker */}
             <Text style={styles.dateLabel}>From Date</Text>
             <TouchableOpacity
@@ -296,9 +493,39 @@ function Quatation() {
               <Button
                 mode="contained"
                 style={styles.searchBtn}
-                onPress={() => {
-                  // TODO: Apply filter logic
-                  setFilterModalVisible(false);
+                onPress={async () => {
+                  try {
+                    const payload = {
+                      lead_id: filterData.user,
+                      from_date: fromDate.toISOString().split("T")[0],
+                      to_date: toDate.toISOString().split("T")[0],
+                      type: "quotation",
+                    };
+
+                    const response = await axios.post(
+                      "http://crmclient.trinitysoftwares.in/crmAppApi/quatation.php?type=getFilteredQuotation",
+                      payload,
+                      { headers: { "Content-Type": "application/json" } }
+                    );
+
+                    if (response.data.status === "success") {
+                      setNetAmount(response.data.total_net_amt);
+
+                      setQuotations(response.data.quotations);
+                      setFilterModalVisible(false);
+                    } else {
+                      Toast.show({
+                        type: "error",
+                        text1: "Failed to fetch filtered data",
+                      });
+                    }
+                  } catch (error) {
+                    console.error(error);
+                    Toast.show({
+                      type: "error",
+                      text1: "API Error",
+                    });
+                  }
                 }}
               >
                 Search
@@ -307,7 +534,7 @@ function Quatation() {
                 mode="outlined"
                 style={styles.resetBtn}
                 onPress={() => {
-                  setFilterData({ agent: "", user: "", state: "" });
+                  setFilterData({ user: "" });
                 }}
               >
                 Reset
@@ -316,7 +543,7 @@ function Quatation() {
           </View>
         </View>
       </Modal>
-      
+
       <View
         style={{
           display: "flex",
@@ -328,27 +555,30 @@ function Quatation() {
         }}
       >
         <Text style={{ color: "#000", fontSize: 18 }}>Quatation Sent</Text>
-        <Text style={{ color: "#000", fontSize: 18 }}>₹ 1000</Text>
+        <Text style={{ color: "#000", fontSize: 18 }}>
+          ₹ {netAmount?.toFixed(2)}
+        </Text>
       </View>
+
       <FlatList
-        data={filteredLeads}
-        keyExtractor={(item) => item.id}
+        data={filteredQuotations}
+        keyExtractor={(item) => item.bill_id}
         renderItem={({ item, index }) => (
           <Card style={styles.card} mode="outlined">
             <Card.Title
-              title={`${index + 1}. ${item.name}`}
+              title={`${index + 1}. 000${item.bill_id}  ${item.lead_id} ${item.customer_name}`}
               right={() => (
                 <TouchableOpacity
                   onPress={() => {
-                    setSelectedItem(item.id);
+                    setSelectedItem(item.bill_id);
                     setMenuVisible(true);
                   }}
                 >
                   <IconButton icon="dots-vertical" />
                 </TouchableOpacity>
               )}
-              titleStyle={{ color: "#b80b11" }}
-              left={() => <IconButton icon="school" iconColor={"#b80b11"} />}
+              titleStyle={{ color: "#4b3ba9" }}
+              left={() => <IconButton icon="school" iconColor={"#4b3ba9"} />}
             />
             <View style={styles.horizontalLine} />
             <Card.Content>
@@ -356,49 +586,54 @@ function Quatation() {
                 <IconButton
                   icon="bookmark-outline"
                   size={18}
-                  iconColor="#b80b11"
+                  iconColor="#4b3ba9"
                 />
-                <Text>{item.service}</Text>
+                <Text>{item.billno}</Text>
               </View>
               {item.email ? (
                 <View style={styles.row}>
-                  <IconButton icon="mail" size={18} iconColor="#b80b11" />
+                  <IconButton icon="mail" size={18} iconColor="#4b3ba9" />
                   <Text>{item.email}</Text>
                 </View>
               ) : null}
-              {item.phone ? (
+              {item.mobile_no ? (
                 <View style={styles.row}>
                   <IconButton
                     icon="phone-outline"
                     size={18}
-                    iconColor="#b80b11"
+                    iconColor="#4b3ba9"
                   />
-                  <Text>{item.phone}</Text>
+                  <Text>{item.mobile_no}</Text>
                 </View>
               ) : null}
 
-              {item.amount ? (
+              {item.net_amt ? (
                 <View style={styles.row}>
                   <IconButton
                     icon="wallet-outline"
                     size={18}
-                    iconColor="#b80b11"
+                    iconColor="#4b3ba9"
                   />
-                  <Text>{item.amount}</Text>
+                  <Text>₹ {parseFloat(item.net_amt || "0").toFixed(2)}</Text>
                 </View>
               ) : null}
-              {item.date ? (
+              {item.billdate ? (
                 <View style={styles.row}>
-                  <IconButton icon="calendar" size={18} iconColor="#b80b11" />
-                  <Text>{item.date}</Text>
+                  <IconButton icon="calendar" size={18} iconColor="#4b3ba9" />
+                  <Text>{item.billdate}</Text>
                 </View>
               ) : null}
             </Card.Content>
             {renderMenu(item)}
           </Card>
         )}
+          initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
       />
       <CreateCustomer />
+      <DeleteConfirmModal />
       <Button
         icon="plus"
         mode="contained"
@@ -447,7 +682,7 @@ const styles = StyleSheet.create({
   },
   horizontalLine: {
     height: 1,
-    backgroundColor: "#b80b11",
+    backgroundColor: "#4b3ba9",
     marginHorizontal: 16,
     marginTop: -15,
     marginBottom: 4,
@@ -457,7 +692,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderRadius: 30,
     backgroundColor: "#fff",
-    borderColor: "#b80b11",
+    borderColor: "#4b3ba9",
     marginHorizontal: 10,
   },
   row: {
@@ -515,14 +750,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  filterInput: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 12,
-  },
+  
 
   filterButtonsRow: {
     flexDirection: "row",

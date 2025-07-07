@@ -3,9 +3,10 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import { DrawerNavigationProp } from "@react-navigation/drawer";
 import { LinearGradient } from "expo-linear-gradient";
-import { router, useNavigation } from "expo-router";
-import React, { useState } from "react";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,19 +16,22 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as DocumentPicker from "expo-document-picker";
 
 import { withDrawer } from "./drawer";
 import { SafeAreaView } from "react-native-safe-area-context";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getAllEmployeeDetails, getUserDetails } from "@/components/utils/api";
+import Toast from "react-native-toast-message";
 
 type RootDrawerParamList = {
-  Dashboard: undefined;
-  Qualification: undefined;
-  FollowUpForm: undefined;
+  TaskMangementForm: undefined;
 };
 
-function FollowUpForm() {
+function TaskMangementForm() {
   const [form, setForm] = useState({
-    lead: "",
+    employee: "",
     createDate: "",
     createTime: "",
     heading: "",
@@ -38,7 +42,14 @@ function FollowUpForm() {
   });
 
   const [entries, setEntries] = useState<any[]>([]);
-
+  const [document, setDocument] = useState<any>(null);
+  const [error, setError] = useState("");
+  const [user, setUser] = useState<any>(null);
+  const [emp, setEmp] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingTask, setLoadingTask] = useState(false);
+  const { type, id } = useLocalSearchParams();
+  const taskId = Array.isArray(id) ? id[0] : id;
   const handleChange = (name: keyof typeof form, value: string) => {
     setForm({ ...form, [name]: value });
   };
@@ -54,11 +65,15 @@ function FollowUpForm() {
 
   const handleDateChange = (event: any, selectedDate: Date | undefined) => {
     if (selectedDate) {
-      const dateStr = `${selectedDate.getDate().toString().padStart(2, "0")}/${(
+      const dateStr = `${selectedDate.getFullYear()}-${(
         selectedDate.getMonth() + 1
       )
         .toString()
-        .padStart(2, "0")}/${selectedDate.getFullYear()}`;
+        .padStart(
+          2,
+          "0"
+        )}-${selectedDate.getDate().toString().padStart(2, "0")}`;
+
       if (showDatePicker) handleChange(showDatePicker, dateStr);
     }
     setShowDatePicker(null);
@@ -77,7 +92,7 @@ function FollowUpForm() {
 
   const handleReset = () => {
     setForm({
-      lead: "",
+      employee: "",
       createDate: "",
       createTime: "",
       heading: "",
@@ -87,9 +102,10 @@ function FollowUpForm() {
       endTime: "",
     });
   };
-  const handleSave = () => {
+
+  const handleSave = async () => {
     if (
-      !form.lead ||
+      !form.employee ||
       !form.createDate ||
       !form.createTime ||
       !form.description ||
@@ -98,22 +114,188 @@ function FollowUpForm() {
       !form.endDate ||
       !form.endTime
     ) {
-      alert("Please fill all required fields.");
+      Toast.show({ type: "error", text1: "Please fill all required fields." });
       return;
     }
 
-    const newEntry = {
-      ...form,
-      id: Date.now(), // unique ID
-    };
+    setLoading(true);
 
-    setEntries((prev) => [newEntry, ...prev]);
-    handleReset();
+    try {
+      const formData = new FormData();
+      formData.append("emp_id", form.employee);
+      formData.append("task_date", form.createDate);
+      formData.append("task_time", form.createTime);
+      formData.append("task_heading", form.heading);
+      formData.append("description", form.description);
+      formData.append("priority", form.priority);
+      formData.append("task_end_date", form.endDate);
+      formData.append("task_end_time", form.endTime);
+
+      if (document && document.type !== "existing") {
+        const fileExtension = document.name.split(".").pop();
+        formData.append("document", {
+          uri: document.uri,
+          name: document.name,
+          type: document.type || `application/${fileExtension}`,
+        } as any);
+      }
+
+      if (type === "update" && id) {
+        formData.append("task_man_id", String(taskId));
+        const res = await axios.post(
+          "http://crmclient.trinitysoftwares.in/crmAppApi/taskManagement.php?type=updateTaskDetails",
+          formData,
+          { headers: { "Content-Type": "multipart/form-data" } }
+        );
+
+        if (res.data.status === "success") {
+          Toast.show({ type: "success", text1: "Task updated successfully" });
+          router.push("/(components)/taskList");
+        } else {
+          Toast.show({ type: "error", text1: "Failed to update task" });
+        }
+      } else {
+        formData.append("loginid", user?.userid);
+        const res = await axios.post(
+          "http://crmclient.trinitysoftwares.in/crmAppApi/taskManagement.php?type=createTasks",
+          formData,
+          { headers: { "Content-Type": "multipart/form-data" } }
+        );
+
+        if (res.data.status === "success") {
+          Toast.show({ type: "success", text1: "Task created successfully" });
+          router.push("/(components)/taskList");
+          handleReset();
+          setDocument(null);
+        } else {
+          Toast.show({ type: "error", text1: "Failed to create task" });
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      Toast.show({ type: "error", text1: "Something went wrong!" });
+    } finally {
+      setLoading(false);
+    }
   };
+
   const handleDelete = (id: number) => {
     setEntries((prev) => prev.filter((entry) => entry.id !== id));
   };
 
+  const pickDocument = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: [
+        "image/jpeg",
+        "image/png",
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ],
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+
+    if (result.assets && result.assets.length > 0) {
+      const fileAsset = result.assets[0];
+      setDocument({
+        id: Date.now(),
+        uri: fileAsset.uri,
+        name: fileAsset.name ?? "Unnamed File",
+        type: fileAsset.mimeType ?? "application/octet-stream",
+      });
+    }
+  };
+
+  useEffect(() => {
+    const fetchUserIdAndDetails = async () => {
+      try {
+        const id = await AsyncStorage.getItem("userId");
+        if (id) {
+          const result = await getUserDetails(id);
+          if (result.success) {
+            setUser(result.user);
+          } else {
+            setError(result.message);
+          }
+        } else {
+          setError("No user ID found in storage.");
+        }
+      } catch (err: any) {
+        setError("Failed to load user data.");
+      }
+    };
+
+    fetchUserIdAndDetails();
+  }, []);
+  useEffect(() => {
+    const fetchEmployee = async () => {
+      const result = await getAllEmployeeDetails();
+      if (result.status === "success") {
+        setEmp(result.data);
+      } else {
+        console.error("Error:", result.message);
+      }
+    };
+
+    fetchEmployee();
+  }, []);
+
+  useEffect(() => {
+    const taskId = Array.isArray(id) ? id[0] : id;
+    if (type === "update" && taskId) {
+      fetchTaskDetails(taskId);
+    }
+  }, [type, id]);
+
+  const fetchTaskDetails = async (taskId: string) => {
+    setLoadingTask(true);
+    try {
+      const res = await axios.get(
+        `http://crmclient.trinitysoftwares.in/crmAppApi/taskManagement.php?type=getTaskById&task_man_id=${taskId}`
+      );
+
+      if (res.data.status === "success") {
+        const task = res.data.task;
+        setForm({
+          employee: task.emp_id || "",
+          createDate: task.task_date || "",
+          createTime: task.task_time || "",
+          heading: task.task_heading || "",
+          description: task.description || "",
+          priority: task.priority || "",
+          endDate: task.task_end_date || "",
+          endTime: task.task_end_time || "",
+        });
+
+        if (task.document_url) {
+          setDocument({
+            uri: task.document_url,
+            name: task.document,
+            type: "existing",
+          });
+        }
+      } else {
+        Toast.show({ type: "error", text1: "Failed to load task details" });
+      }
+    } catch (err) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Error fetching task" });
+    } finally {
+      setLoadingTask(false);
+    }
+  };
+
+  
+
+  if (loadingTask) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#5975D9" />
+      </View>
+    );
+  }
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f2f6ff" }}>
       <KeyboardAvoidingView
@@ -140,14 +322,20 @@ function FollowUpForm() {
             </Text>
             <View style={styles.input2}>
               <Picker
-                selectedValue={form.lead}
-                onValueChange={(itemValue) => handleChange("lead", itemValue)}
+                selectedValue={form.employee}
+                onValueChange={(itemValue) =>
+                  handleChange("employee", itemValue)
+                }
                 style={{ margin: -3 }}
               >
                 <Picker.Item label="--Select--" value="" />
-                <Picker.Item label="Employee A" value="Employee A" />
-                <Picker.Item label="Employee B" value="Employee B" />
-                <Picker.Item label="Employee C" value="Employee C" />
+                {emp?.map((item: any) => (
+                  <Picker.Item
+                    key={item?.emp_id}
+                    label={item?.emp_name}
+                    value={item?.emp_id}
+                  />
+                ))}
               </Picker>
             </View>
 
@@ -195,7 +383,10 @@ function FollowUpForm() {
               value={form.description}
               onChangeText={(text) => handleChange("description", text)}
             />
-
+            <Text style={styles.label}>Attach Document (Optional)</Text>
+            <TouchableOpacity style={styles.input} onPress={pickDocument}>
+              <Text>{document ? document.name : "Select Document"}</Text>
+            </TouchableOpacity>
             {/* Priority */}
             <Text style={styles.label}>
               Select Priority<Text style={styles.required}>*</Text>
@@ -239,8 +430,16 @@ function FollowUpForm() {
 
             {/* Buttons */}
             <View style={styles.buttonRow}>
-              <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                <Text style={styles.btnText}>Save</Text>
+              <TouchableOpacity
+                style={[styles.saveBtn, loading && { opacity: 0.7 }]}
+                onPress={handleSave}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.btnText}>Save</Text>
+                )}
               </TouchableOpacity>
               <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
                 <Text style={styles.btnText}>Reset</Text>
@@ -322,7 +521,7 @@ function FollowUpForm() {
   );
 }
 
-export default withDrawer(FollowUpForm, "FollowUpForm");
+export default withDrawer(TaskMangementForm, "TaskMangementForm");
 
 const styles = StyleSheet.create({
   container: {
@@ -340,6 +539,7 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 2,
   },
+
   profileRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -401,6 +601,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 16,
     elevation: 3,
+    marginHorizontal: 16,
+    marginTop: 16,
   },
   label: {
     marginTop: 10,
