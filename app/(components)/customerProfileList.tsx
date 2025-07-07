@@ -46,7 +46,7 @@ type Lead = {
   state_name: string;  
   state_id: string;
   company_name: string; // Maps to amount
-  address: string; // Maps to notes
+  createdate: string; // Maps to notes
   type: string; // Will be "lead"
   lead_status: string;
   lead_owner: string;
@@ -625,10 +625,10 @@ function NewLeadsScreen() {
                 </View>
               ) : null}
              
-              {item.address ? (
+              {item.createdate ? (
                 <View style={styles.row}>
                   <IconButton icon="calendar" size={18} iconColor="#4b3ba9" />
-                  <Text>{item.address}</Text>
+                  <Text>{item.createdate}</Text>
                 </View>
               ) : null}
             </Card.Content>

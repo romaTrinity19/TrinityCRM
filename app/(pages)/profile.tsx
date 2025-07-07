@@ -6,6 +6,8 @@ import React, { useEffect, useState } from "react";
 import {
   Alert,
   Image,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,15 +15,19 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 const ProfileScreen = () => {
   const [name, setName] = useState("Admin");
+  const [username, setUsername] = useState("adminuser");
+  const [password, setPassword] = useState("password123");
   const [contact, setContact] = useState("9770131555");
   const [email, setEmail] = useState("nipeshp@gmail.com");
   const [address, setAddress] = useState("Earth");
   const [imageUri, setImageUri] = useState(
     "https://cdn-icons-png.flaticon.com/512/3135/3135715.png"
   );
+  const [logoUri, setLogoUri] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -49,73 +55,140 @@ const ProfileScreen = () => {
     }
   };
 
+  const handleLogoPick = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 2],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setLogoUri(result.assets[0].uri);
+    }
+  };
+
   const handleUpdate = () => {
     Alert.alert("Success", "Profile updated successfully!");
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" color="#fff" size={24} />
-          </TouchableOpacity>
-
-          <Text style={styles.headerTitle}>Trinity CRM</Text>
-
-          <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
-            <MaterialIcons name="logout" size={20} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
-
-      <TouchableOpacity
-        onPress={handleImagePick}
-        style={styles.avatarContainer}
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: "#f2f6ff", paddingBottom: 60 }}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
       >
-        <Image source={{ uri: imageUri }} style={styles.avatar} />
-      </TouchableOpacity>
+        <ScrollView contentContainerStyle={styles.container}>
+          <LinearGradient colors={["#5975D9", "#1F40B5"]} style={styles.header}>
+            <View style={styles.headerContent}>
+              <TouchableOpacity onPress={() => router.back()}>
+                <Ionicons name="arrow-back" color="#fff" size={24} />
+              </TouchableOpacity>
 
-      <View style={styles.form}>
-        <Text style={styles.label}>Name</Text>
-        <TextInput style={styles.input} value={name} onChangeText={setName} />
+              <Text style={styles.headerTitle}>Trinity CRM</Text>
 
-        <Text style={styles.label}>Contact No.</Text>
-        <TextInput
-          style={styles.input}
-          value={contact}
-          onChangeText={setContact}
-          keyboardType="phone-pad"
-        />
+              <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
+                <MaterialIcons name="logout" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
 
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-        />
+          <TouchableOpacity
+            onPress={handleImagePick}
+            style={styles.avatarContainer}
+          >
+            <Image source={{ uri: imageUri }} style={styles.avatar} />
+          </TouchableOpacity>
 
-        <Text style={styles.label}>Address</Text>
-        <TextInput
-          style={styles.input}
-          value={address}
-          onChangeText={setAddress}
-        />
+          <View style={styles.form}>
+            <Text style={styles.label}>Name</Text>
+            <TextInput
+              style={styles.input}
+              value={name}
+              onChangeText={setName}
+            />
 
-        <TouchableOpacity style={styles.updateButton} onPress={handleUpdate}>
-          <Text style={styles.updateText}>Update</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+            <Text style={styles.label}>Username</Text>
+            <TextInput
+              style={styles.input}
+              value={username}
+              onChangeText={setUsername}
+            />
+
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+
+            <Text style={styles.label}>Contact No.</Text>
+            <TextInput
+              style={styles.input}
+              value={contact}
+              onChangeText={setContact}
+              keyboardType="phone-pad"
+            />
+
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+            />
+
+            <Text style={styles.label}>Address</Text>
+            <TextInput
+              style={styles.input}
+              value={address}
+              onChangeText={setAddress}
+            />
+
+            <Text style={styles.label}>Logo</Text>
+            <TouchableOpacity onPress={handleLogoPick}>
+              <View pointerEvents="none">
+                <TextInput
+                  style={styles.input}
+                  placeholder="Select Logo"
+                  value={logoUri ? "Logo Selected" : ""}
+                  editable={false}
+                />
+              </View>
+            </TouchableOpacity>
+
+            {logoUri && (
+              <Image
+                source={{ uri: logoUri }}
+                style={{
+                  width: 200,
+                  height: 100,
+                  resizeMode: "contain",
+                  alignSelf: "center",
+                  marginTop: 10,
+                }}
+              />
+            )}
+
+            <TouchableOpacity
+              style={styles.updateButton}
+              onPress={handleUpdate}
+            >
+              <Text style={styles.updateText}>Update</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#f2f6ff",
-
-    paddingTop: 30,
     flexGrow: 1,
   },
   header: {
@@ -143,11 +216,6 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-  },
-  changeText: {
-    color: "#1a237e",
-    marginTop: 8,
-    textDecorationLine: "underline",
   },
   form: {
     paddingHorizontal: 20,

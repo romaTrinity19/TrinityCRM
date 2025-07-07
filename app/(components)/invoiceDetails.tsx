@@ -1,57 +1,113 @@
-import React from "react";
+import { Ionicons } from "@expo/vector-icons";
+import axios from "axios";
+import { LinearGradient } from "expo-linear-gradient";
+import { router, useLocalSearchParams } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
   TouchableWithoutFeedback,
+  View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as FileSystem from "expo-file-system";
-import { router } from "expo-router";
-import { Modal } from "react-native";
+import * as IntentLauncher from "expo-intent-launcher";
+import Toast from "react-native-toast-message";
 
-const quotationData = {
-  customer: "John Doe",
-  contact: "9876543210",
-  whatsapp: "9876543210",
-  invoiceNumber: "2024-25/QU000003",
-  invoiceDate: "05/06/2025",
-  serviceDate: "05/06/2025",
-  products: [
-    {
-      id: 1,
-      particular: "Web Design",
-      serviceType: "Service Type 1",
-      charges: 5000,
-    },
-    {
-      id: 2,
-      particular: "SEO",
-      serviceType: "Service Type 2",
-      charges: 2000,
-    },
-  ],
-  discount: 500,
-  notes: "Quotation valid for 30 days.",
-};
-
-const total = quotationData.products.reduce(
-  (sum, item) => sum + item.charges,
-  0
-);
-const netTotal = total - quotationData.discount;
-
-const QuotationDetails = () => {
+const InvoiceDetails = () => {
   const [menuVisible, setMenuVisible] = React.useState(false);
   const menuButtonRef = React.useRef<View>(null);
   const [menuPosition, setMenuPosition] = React.useState({ x: 0, y: 0 });
+  const [products, setProducts] = useState<any[]>([]);
+  const [Invoice, setInvoice] = useState<any>({});
+  const { id: _id, type: _type } = useLocalSearchParams();
+  const id = Array.isArray(_id) ? _id[0] : _id;
+
+  const total = products?.reduce(
+    (sum, item) => sum + parseFloat(item.charges || 0),
+    0
+  );
+  const discount = parseFloat(Invoice?.discount || 0);
+  const netTotal = total - discount;
+
+  const downloadPDF = async (billId: string) => {
+    try {
+      const downloadUrl = `http://crmclient.trinitysoftwares.in/admin/pdf_invoice.php?bill_id=${billId}`;
+      const fileUri = FileSystem.documentDirectory + `invoice_${billId}.pdf`;
+
+      const downloadResumable = FileSystem.createDownloadResumable(
+        downloadUrl,
+        fileUri
+      );
+
+      const result = await downloadResumable.downloadAsync();
+
+      if (result && result.uri) {
+        const cUri = await FileSystem.getContentUriAsync(result.uri);
+        IntentLauncher.startActivityAsync("android.intent.action.VIEW", {
+          data: cUri,
+          flags: 1,
+          type: "application/pdf",
+        });
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Failed to download PDF.",
+        });
+      }
+    } catch (error) {
+      console.error("Error downloading PDF:", error);
+      Toast.show({
+        type: "error",
+        text1: "Failed to download PDF.",
+      });
+    }
+  };
+
+  const fetchDraftProductsByBillId = async (billId: string) => {
+    try {
+      const response = await axios.post(
+        "http://crmclient.trinitysoftwares.in/crmAppApi/quatation.php?type=fetchProducts",
+        { type: "invoice", bill_id: billId },
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      if (response.data.status === "success") {
+        setProducts(response.data.products);
+      }
+    } catch (error) {
+      console.error("Failed to fetch products by bill_id:", error);
+    }
+  };
+
+  useEffect(() => {
+    const fetchInvoiceById = async () => {
+      try {
+        const response = await axios.get(
+          `http://crmclient.trinitysoftwares.in/crmAppApi/quatation.php?type=getInvoiceById&bill_id=${id}`
+        );
+
+        if (response.data.status === "success") {
+          const q = response.data.invoice;
+          setInvoice(q);
+        } else {
+          console.log("Invoice not found");
+        }
+      } catch (err) {
+        console.error("Error fetching Invoice:", err);
+      }
+    };
+
+    fetchDraftProductsByBillId(id);
+
+    fetchInvoiceById();
+  }, [id]);
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f2f6ff" }}>
       <KeyboardAvoidingView
@@ -111,7 +167,7 @@ const QuotationDetails = () => {
                   style={{ paddingVertical: 10, paddingHorizontal: 15 }}
                   onPress={() => {
                     setMenuVisible(false);
-                  
+                    downloadPDF(id);
                   }}
                 >
                   <Text style={{ fontSize: 16, color: "#333" }}>Download</Text>
@@ -122,7 +178,7 @@ const QuotationDetails = () => {
                   onPress={async () => {
                     setMenuVisible(false);
                     await Share.share({
-                      message: `Quotation from ${quotationData.customer}, Total ₹${netTotal}`,
+                      message: `Invoice from ${Invoice?.customer_name}, Total ₹${netTotal}`,
                     });
                   }}
                 >
@@ -142,37 +198,37 @@ const QuotationDetails = () => {
             <View style={styles.row}>
               <Text style={styles.label}>Customer</Text>
               <Text style={styles.value}>
-                :{"  "} {quotationData.customer}
+                :{"  "} {Invoice?.customer_name}
               </Text>
             </View>
             <View style={styles.row}>
               <Text style={styles.label}>Contact Number</Text>
               <Text style={styles.value}>
-                :{"  "} {quotationData.contact}
+                :{"  "} {Invoice?.mobile_no}
               </Text>
             </View>
             <View style={styles.row}>
               <Text style={styles.label}>WhatsApp Number</Text>
               <Text style={styles.value}>
-                :{"  "} {quotationData.whatsapp}
+                :{"  "} {Invoice?.whatsapp_no}
               </Text>
             </View>
             <View style={styles.row}>
               <Text style={styles.label}>Invoice Number</Text>
               <Text style={styles.value}>
-                :{"  "} {quotationData.invoiceNumber}
+                :{"  "} {Invoice?.billno}
               </Text>
             </View>
             <View style={styles.row}>
               <Text style={styles.label}>Invoice Date</Text>
               <Text style={styles.value}>
-                :{"  "} {quotationData.invoiceDate}
+                :{"  "} {Invoice?.billdate}
               </Text>
             </View>
-            <View style={styles.row}>
+             <View style={styles.row}>
               <Text style={styles.label}>Service Date</Text>
               <Text style={styles.value}>
-                :{"  "} {quotationData.serviceDate}
+                :{"  "} {Invoice?.service_date}
               </Text>
             </View>
           </View>
@@ -180,32 +236,28 @@ const QuotationDetails = () => {
           {/* Products */}
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Product Details</Text>
-            {quotationData.products.map((item, index) => (
-              <View key={item.id} style={styles.productItem}>
+            {products?.map((item, index) => (
+              <View key={item.billing_details_id} style={styles.productItem}>
                 <Text style={styles.productTitle}>
                   {index + 1}. {item.particular}
                 </Text>
                 <Text style={styles.productInfo}>
-                  Service Type: {item.serviceType}
+                  Service Type: {item.service_name}
                 </Text>
-                <Text style={styles.productInfo}>
-                  Charges: ₹{item.charges.toFixed(2)}
-                </Text>
+                <Text style={styles.productInfo}>Charges: ₹{item.charges}</Text>
               </View>
             ))}
 
             <View style={styles.totalBox}>
-              <Text style={styles.totalLabel}>Total:</Text>
+              <Text style={styles.totalLabel}>Total</Text>
               <Text style={styles.totalValue}>₹{total.toFixed(2)}</Text>
             </View>
             <View style={styles.totalBox}>
-              <Text style={styles.totalLabel}>Discount:</Text>
-              <Text style={styles.totalValue}>
-                ₹{quotationData.discount.toFixed(2)}
-              </Text>
+              <Text style={styles.totalLabel}>Discount</Text>
+              <Text style={styles.totalValue}>₹{discount.toFixed(2)}</Text>
             </View>
             <View style={styles.totalBox}>
-              <Text style={styles.totalLabel}>Net Total:</Text>
+              <Text style={styles.totalLabel}>Net Total</Text>
               <Text style={styles.totalValue}>₹{netTotal.toFixed(2)}</Text>
             </View>
           </View>
@@ -213,7 +265,7 @@ const QuotationDetails = () => {
           {/* Notes */}
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Notes</Text>
-            <Text style={styles.value}>{quotationData.notes}</Text>
+            <Text style={styles.value}>{Invoice?.other_note}</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -221,7 +273,7 @@ const QuotationDetails = () => {
   );
 };
 
-export default QuotationDetails;
+export default InvoiceDetails;
 
 const styles = StyleSheet.create({
   container: {

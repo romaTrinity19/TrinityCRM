@@ -70,13 +70,13 @@ const CreateNewLeadForm = () => {
     }
   }, [sameAsContact, formData.contact]);
 
-  const [user, setUser] = useState<any>(null);
+   
   const [states, setStates] = useState([]);
   const [sources, setSources] = useState([]);
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
+const [user, setUser] = useState<any>(null);
   useEffect(() => {
     const fetchUserIdAndDetails = async () => {
       try {

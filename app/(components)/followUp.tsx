@@ -138,7 +138,7 @@ const CreateReminderScreen = () => {
       setError("Failed to load user data.");
     }
   };
-
+  
   const fetchOpportunities = async (userId: string) => {
     try {
       const response = await fetch(
